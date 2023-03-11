@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+
+import argparse
+
+import tkinter as tk
+from sudoku import *
+
+MARGIN = 20  # Pixels around the board
+SIDE = 80  # Width of every board cell.
+WIDTH = HEIGHT = MARGIN * 2 + SIDE * 9  # Width and height of the whole board
+
+
+def parse_arguments():
+    """
+    Parses arguments of the form:
+        sudoku.py <sudoku name>
+    """
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("sudoku",
+                            type=str)
+
+    # Creates a dictionary of keys = argument flag, and value = argument
+    args = vars(arg_parser.parse_args())
+    return args['sudoku']
+
+
+class SudokuUI(tk.Frame):
+    """
+    The Tkinter UI, responsible for drawing the board and accepting user input.
+    """
+    def __init__(self, parent, sudoku):
+        self.sudoku = sudoku
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+
+        self.row, self.col = -1, -1
+
+        self.__initUI()
+
+    def __initUI(self):
+        self.parent.title("Dave's Sudoku Solver")
+        self.pack()
+        self.canvas = tk.Canvas(self,
+                                width=WIDTH,
+                                height=HEIGHT)
+        self.canvas.pack(side=tk.TOP, fill=tk.BOTH)
+
+        #bottom = tk.Frame(master=self)
+        #bottom.pack(side=tk.BOTTOM, fill=tk.BOTH)
+
+        reset_button = tk.Button(self,
+                                 text="Reset",
+                                 width=20,
+                                 command=self.__reset)
+        reset_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=20, pady=10)
+        save_button = tk.Button(self,
+                                text="Save",
+                                width=20,
+                                command=self.__save)
+        save_button.pack(side=tk.RIGHT, fill=tk.BOTH, padx=20, pady=10)
+
+        solve_button = tk.Button(self,
+                                 text="",
+                                 width=20,
+                                 command=self.__solve)
+        solve_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=0, pady=10)
+
+        #solve_status = tk.Label(bottom,
+        #                        text="",
+        #                        width=20)
+        #solve_status.pack(side=tk.RIGHT, fill=tk.BOTH, padx=20, pady=10)
+
+        def on_solve_state_updated():
+            solve_button.config(text=f"Solve ({self.sudoku.solve_state})")
+        self.sudoku.on_solve_state_updated = on_solve_state_updated
+        on_solve_state_updated()
+
+
+        self.__draw_grid()
+        self.__draw_sudoku()
+
+        self.canvas.bind("<Button-1>", self.__cell_clicked)
+        self.canvas.bind("<Double-1>", self.__cell_double_clicked)
+        self.canvas.bind("<Key>", self.__key_pressed)
+
+    def __draw_grid(self):
+        """
+        Draws grid divided with blue lines into 3x3 squares
+        """
+        for i in range(10):
+            color = "blue" if i % 3 == 0 else "gray"
+
+            x0 = MARGIN + i * SIDE
+            y0 = MARGIN
+            x1 = MARGIN + i * SIDE
+            y1 = HEIGHT - MARGIN
+            self.canvas.create_line(x0, y0, x1, y1, fill=color)
+
+            x0 = MARGIN
+            y0 = MARGIN + i * SIDE
+            x1 = WIDTH - MARGIN
+            y1 = MARGIN + i * SIDE
+            self.canvas.create_line(x0, y0, x1, y1, fill=color)
+
+    def __draw_sudoku(self):
+        self.canvas.delete("numbers")
+        for i in range(9):
+            for j in range(9):
+                answer = self.sudoku.get(i, j)
+                if answer != 0:
+                    x = MARGIN + j * SIDE + SIDE / 2
+                    y = MARGIN + i * SIDE + SIDE / 2
+                    self.canvas.create_text(
+                        x, y, text=answer, tags="numbers", fill="black", font=("Stencil", 30)
+                    )
+
+    def __draw_cursor(self):
+        self.canvas.delete("cursor")
+        if self.row >= 0 and self.col >= 0:
+            x0 = MARGIN + self.col * SIDE + 1
+            y0 = MARGIN + self.row * SIDE + 1
+            x1 = MARGIN + (self.col + 1) * SIDE - 1
+            y1 = MARGIN + (self.row + 1) * SIDE - 1
+            self.canvas.create_rectangle(
+                x0, y0, x1, y1,
+                outline="red", tags="cursor"
+            )
+
+    def __draw_victory(self):
+        # create a oval (which will be a circle)
+        x0 = y0 = MARGIN + SIDE * 2
+        x1 = y1 = MARGIN + SIDE * 7
+        self.canvas.create_oval(
+            x0, y0, x1, y1,
+            tags="victory", fill="dark orange", outline="orange"
+        )
+        # create text
+        x = y = MARGIN + 4 * SIDE + SIDE / 2
+        self.canvas.create_text(
+            x, y,
+            text="You win!", tags="victory",
+            fill="white", font=("Arial", 32)
+        )
+
+
+    def __cell_double_clicked(self, event):
+        self.__cell_clicked(event)
+
+    def __cell_clicked(self, event):
+        x, y = event.x, event.y
+        if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
+            self.canvas.focus_set()
+
+            # get row and col numbers from x,y coordinates
+            row, col = (y - MARGIN) // SIDE, (x - MARGIN) // SIDE
+
+            # if cell was selected already - deselect it
+            if (row, col) == (self.row, self.col):
+                self.row, self.col = -1, -1
+            else:
+                self.row, self.col = row, col
+        else:
+            self.row, self.col = -1, -1
+
+        self.__draw_cursor()
+
+    def __key_pressed(self, event):
+        if self.row >= 0 and self.col >= 0 and event.char in "1234567890":
+            self.sudoku.set(self.row, self.col, int(event.char))
+            self.col, self.row = -1, -1
+            self.__draw_sudoku()
+            self.__draw_cursor()
+
+    def __reset(self):
+        self.sudoku.reset()
+        self.__draw_sudoku()
+
+    def __solve(self):
+        self.sudoku.solve()
+        self.__draw_sudoku()
+
+    def __save(self):
+        self.sudoku.save()
+
+
+if __name__ == '__main__':
+    sudoku_name = parse_arguments()
+    sudoku_filename = f"sudokus/{sudoku_name}.sudoku"
+    sudoku = Sudoku(sudoku_filename)
+
+    root = tk.Tk()
+    SudokuUI(root, sudoku)
+    root.geometry("%dx%d" % (WIDTH, HEIGHT + 80))
+    root.mainloop()
