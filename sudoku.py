@@ -13,11 +13,11 @@ class Sudoku(object):
     Sudoku Puzzle representation
     """
     def __init__(self, sudoku_filename):
-        self.sudoku_filename = sudoku_filename
+        self._sudoku_filename = sudoku_filename
         self.on_solve_state_updated = None
         self.reset()
 
-    def __create_board(self, board_json):
+    def _create_board(self, board_json):
         board = []
         for line in board_json:
             line = line.strip()
@@ -43,29 +43,33 @@ class Sudoku(object):
 
     def save(self):
         sudoku_dict = {
-            "board": [ ''.join(map(lambda digit : str(digit) if digit else '_', row)) for row in self.board ]
+            "board": [ ''.join(map(lambda digit : str(digit) if digit else '_', row)) for row in self._board ]
         }
-        with open(self.sudoku_filename, 'w') as sudoku_file:
+        with open(self._sudoku_filename, 'w') as sudoku_file:
             json.dump(sudoku_dict, sudoku_file)
 
     def reset(self):
-        self.__set_solve_state("unknown")
+        self._set_solve_state("unknown")
         try:
-            with open(self.sudoku_filename, 'r') as sudoku_file:
+            with open(self._sudoku_filename, 'r') as sudoku_file:
                 sudoku = json.load(sudoku_file)
-                self.board = self.__create_board(sudoku["board"])
+                self._board = self._create_board(sudoku["board"])
         except FileNotFoundError:
-            self.board = [ [ None for c in range(9) ] for r in range(9) ]
+            self._board = [ [ None for c in range(9) ] for r in range(9) ]
 
     def set(self, r, c, value):
-        self.board[r][c] = value
-        self.__set_solve_state("unknown")
+        self._board[r][c] = value
+        self._set_solve_state("unknown")
 
     def get(self, r, c):
-        return self.board[r][c]
+        return self._board[r][c]
 
-    def __set_solve_state(self, solve_state):
-        self.solve_state = solve_state
+    @property
+    def solve_state(self):
+        return self._solve_state
+
+    def _set_solve_state(self, solve_state):
+        self._solve_state = solve_state
         if self.on_solve_state_updated:
             self.on_solve_state_updated()
 
@@ -73,10 +77,10 @@ class Sudoku(object):
         domains = {}
         for r in range(9):
             for c in range(9):
-                if self.board[r][c] is None:
+                if self._board[r][c] is None:
                     domain = [1, 2, 3, 4, 5, 6, 7, 8, 9]
                 else:
-                    domain = [ self.board[r][c] ]
+                    domain = [ self._board[r][c] ]
                 domains[f"{r+1}:{c+1}"] = domain
 
         def distinct(coordinates):
@@ -94,7 +98,6 @@ class Sudoku(object):
         for r in range(3):
             for c in range(3):
                 constraints.append(distinct([(r*3 + i, c*3 + j) for i in range(3) for j in range(3)]))
-
         solver_input = {
             "domains": domains,
             "constraints": constraints,
@@ -104,11 +107,11 @@ class Sudoku(object):
             input=json.dumps(solver_input),
             text=True,
         ))
-        self.__set_solve_state(solver_output["result"])
-        if self.solve_state == "solved" or self.solve_state == "stuck":
+        self._set_solve_state(solver_output["result"])
+        if self._solve_state == "solved" or self._solve_state == "stuck":
             for variable, domain in solver_output["domains"].items():
                 if len(domain) == 1:
                     [r, c] = variable.split(':')
                     r, c = int(r) - 1, int(c) - 1
-                    self.board[r][c] = domain[0]
+                    self._board[r][c] = domain[0]
 
