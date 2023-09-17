@@ -77,6 +77,19 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
+class ThermoAction(Action):
+
+    def __init__(self, sudoku, thermo):
+        self._sudoku = sudoku
+        seld._thermo = thermo
+
+
+    def apply(self):
+        self._sudoku.constraints.append(self._thermo)
+
+    def undo(self):
+        self._sudoku.constraints.pop()
+
 
 class EditMode(Enum):
     DIGIT = 0

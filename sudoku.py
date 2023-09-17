@@ -1,11 +1,23 @@
 import json
 import subprocess
+import pickle
 
 class SudokuError(Exception):
     """
     An application specific error.
     """
     pass
+
+
+class Thermo():
+
+    def __init__(self, path):
+        self._path = path
+
+    @property
+    def path(self):
+        return self._path
+
 
 
 class Sudoku(object):
@@ -16,44 +28,18 @@ class Sudoku(object):
         self._sudoku_filename = sudoku_filename
         self.reset()
 
-    def _create_board(self, board_json):
-        board = []
-        for line in board_json:
-            line = line.strip()
-            if len(line) != 9:
-                raise SudokuError(
-                    "Each line in the sudoku sudoku must be 9 chars long."
-                )
-            board.append([])
-
-            for c in line:
-                if c == '_':
-                    board[-1].append(None)
-                elif '1' <= c <= '9':
-                    board[-1].append(int(c))
-                else:
-                    raise SudokuError(
-                        "Valid characters for a sudoku sudoku must be in 1-9"
-                    )
-
-        if len(board) != 9:
-            raise SudokuError("Each sudoku sudoku must be 9 lines long")
-        return board
-
     def save(self):
-        sudoku_dict = {
-            "board": [ ''.join(map(lambda digit : str(digit) if digit else '_', row)) for row in self._board ]
-        }
-        with open(self._sudoku_filename, 'w') as sudoku_file:
-            json.dump(sudoku_dict, sudoku_file)
+        with open(self._sudoku_filename, 'wb') as sudoku_file:
+            data = (self._board, self.constraints)
+            pickle.dump(data, sudoku_file)
 
     def reset(self):
         try:
-            with open(self._sudoku_filename, 'r') as sudoku_file:
-                sudoku = json.load(sudoku_file)
-                self._board = self._create_board(sudoku["board"])
+            with open(self._sudoku_filename, 'rb') as sudoku_file:
+                (self._board, self.constraints) = pickle.load(sudoku_file)
         except FileNotFoundError:
             self._board = [ [ None for c in range(9) ] for r in range(9) ]
+            self.constraints = []
 
     def set(self, r, c, value):
         self._board[r][c] = value
