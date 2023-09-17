@@ -50,6 +50,15 @@ fn main() {
 
                 constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(variables, domain))));
             }
+            "Increasing" => {
+                let mut variables = BitSet::new();
+                for variable in constraint["variables"].as_array().unwrap() {
+                    let variable = variable.as_str().unwrap();
+                    variables.insert(variable_to_index[variable]);
+                }
+
+                constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(variables))));
+            }
             _ => panic!("unknown type"),
         }
 

@@ -39,6 +39,14 @@ impl BitSet {
         BitSetIter{ bits: self.bits }
     }
 
+    pub fn min(&self) -> usize {
+        return self.bits.trailing_zeros() as usize;
+    }
+
+    pub fn max(&self) -> usize {
+        return self.iter().rev().next().unwrap();
+    }
+
 /*
     pub fn combinations(&self) -> Vec<BitSetIter> {
         let mut ret = Vec::new();
@@ -68,11 +76,9 @@ impl BitSet {
         BitSet::from_bits(self.bits & !other.bits)
     }
 
-    /*
     pub fn difference_with(&mut self, other: BitSet) {
         self.bits &= !other.bits;
     }
-    */
 
     pub fn intersection(&self, other: BitSet) -> BitSet {
         BitSet::from_bits(self.bits & other.bits)
@@ -101,6 +107,20 @@ impl Iterator for BitSetIter {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.bits == 0 {
+            return None;
+        } else {
+            let item = self.bits.trailing_zeros() as usize;
+            self.bits ^= 1 << item;
+            return Some(item);
+        }
+    }
+
+}
+
+impl DoubleEndedIterator for BitSetIter {
+
+    fn next_back(&mut self) -> Option<Self::Item> {
         if self.bits == 0 {
             return None;
         } else {

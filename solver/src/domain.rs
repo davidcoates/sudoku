@@ -35,6 +35,13 @@ impl Domain {
         }
     }
 
+    pub fn range(min: usize, max: usize) -> Self {
+        let bits = ((1 << (max + 1)) - 1) & !((1 << (min + 1)) - 1);
+        return Domain {
+            bit_set: BitSet::from_bits(bits),
+        }
+    }
+
     pub fn insert(&mut self, digit: Digit) {
         self.bit_set.insert(digit);
     }
@@ -67,13 +74,21 @@ impl Domain {
         Domain { bit_set: self.bit_set.difference(other.bit_set) }
     }
 
-    /*
+    pub fn min(&self) -> Digit {
+        return self.bit_set.min()
+    }
+
+    pub fn max(&self) -> Digit {
+        return self.bit_set.max()
+    }
+
     pub fn difference_with(&mut self, other: Domain) -> bool {
         let tmp = self.bit_set;
         self.bit_set.difference_with(other.bit_set);
         return tmp != self.bit_set;
     }
 
+    /*
     pub fn intersection(&self, other: Domain) -> Domain {
         Domain { bit_set: self.bit_set.intersection(other.bit_set) }
     }

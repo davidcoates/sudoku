@@ -42,7 +42,7 @@ impl BoxedConstraint {
         let mut all_solved = true;
         for variable in self.unbox().variables().iter() {
             if domains.get(variable).unwrap().unsolvable() {
-                return Some(Result::Unsolvable);
+                return Some(Result::Solved); // FIXME
             } else if !domains.get(variable).unwrap().solved() {
                 all_solved = false;
             }
@@ -192,6 +192,69 @@ impl Constraint for Permutation {
             }
         }
 
+        if progress {
+            let mut tmp = Vec::new();
+            tmp.push(BoxedConstraint::new(Rc::new(*self)));
+            return Result::Progress(tmp);
+        } else {
+            return Result::Stuck;
+        }
+    }
+
+    fn variables(&self) -> &BitSet {
+        &self.variables
+    }
+}
+
+
+// Strictly increasing digits
+#[derive(Clone,Copy)]
+pub struct Increasing {
+    variables: BitSet,
+}
+
+impl Increasing {
+
+    pub fn new(variables: BitSet) -> Self {
+        return Increasing {
+            variables,
+        };
+    }
+
+}
+
+impl Constraint for Increasing {
+
+    fn simplify(&self, domains: &mut Domains) -> Result {
+
+        let mut progress = false;
+
+        // Restrict small values
+        let mut min : Option<usize> = None;
+        for variable in self.variables.iter() {
+            match min {
+                Some(n) => {
+                    progress |= domains.get_mut(variable).unwrap().difference_with(Domain::range(0, n));
+                }
+                _ => {}
+            }
+
+            min = Some(domains.get(variable).unwrap().min());
+        }
+/*
+        // Restrict large values
+        let mut max : Option<usize> = None;
+        for variable in self.variables.iter().rev() {
+            match max {
+                Some(n) => {
+                    progress |= domains.get_mut(variable).unwrap().intersect_with(Domain::range(0, n - 1));
+                }
+                _ => {}
+            }
+
+            max = Some(domains.get(variable).unwrap().max());
+        }
+*/
         if progress {
             let mut tmp = Vec::new();
             tmp.push(BoxedConstraint::new(Rc::new(*self)));

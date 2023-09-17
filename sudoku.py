@@ -57,7 +57,7 @@ class Sudoku(object):
                     domain = [ self._board[r][c] ]
                 domains[f"{r+1}:{c+1}"] = domain
 
-        def distinct(coordinates):
+        def permutation(coordinates):
             variables = [ f"{r+1}:{c+1}" for (r, c) in coordinates ]
             return {
                 "type": "Permutation",
@@ -66,16 +66,33 @@ class Sudoku(object):
             }
         constraints = []
         for r in range(9):
-            constraints.append(distinct([(r, c) for c in range(9)]))
+            constraints.append(permutation([(r, c) for c in range(9)]))
         for c in range(9):
-            constraints.append(distinct([(r, c) for r in range(9)]))
+            constraints.append(permutation([(r, c) for r in range(9)]))
         for r in range(3):
             for c in range(3):
-                constraints.append(distinct([(r*3 + i, c*3 + j) for i in range(3) for j in range(3)]))
+                constraints.append(permutation([(r*3 + i, c*3 + j) for i in range(3) for j in range(3)]))
+
+        def thermo(thermo):
+            variables = [ f"{r+1}:{c+1}" for (r, c) in thermo.path ]
+            return {
+                "type": "Increasing",
+                "variables": variables
+            }
+
+        for constraint in self.constraints:
+            if isinstance(constraint, Thermo):
+                constraints.append(thermo(constraint))
+            else:
+                assert(False)
+
         solver_input = {
             "domains": domains,
             "constraints": constraints,
         }
+        print(domains)
+        for constraint in constraints:
+            print(constraint)
         solver_output = json.loads(subprocess.check_output(
             ["./solver/target/debug/solver"],
             input=json.dumps(solver_input),
