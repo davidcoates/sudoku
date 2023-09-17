@@ -80,7 +80,7 @@ class DigitAction(Action):
 
 class EditMode(Enum):
     DIGIT = 0
-    THERMO = 1
+    THERMOMETER = 1
 
 def parse_arguments():
     """
@@ -100,6 +100,7 @@ BACKGROUND_COLOR = "white smoke"
 INLAY_COLOR = "linen"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
+THERMO_COLOR = "light grey"
 
 class SudokuUI(tk.Frame):
     """
@@ -110,6 +111,7 @@ class SudokuUI(tk.Frame):
         tk.Frame.__init__(self, parent)
         self._parent = parent
         self._selection = None
+        self._thermo = None
         self._actions = ActionStack()
         self._initUI()
 
@@ -203,10 +205,11 @@ class SudokuUI(tk.Frame):
         self._draw_grid()
         self._draw_sudoku()
 
-        self._parent.bind("<Button-1>", self._cell_left_clicked)
-        self._parent.bind("<Button-3>", self._cell_right_clicked)
-        self._parent.bind("<Key>", self._key_pressed)
-        self._parent.bind("<BackSpace>", self._backspace_pressed)
+        self.canvas.bind("<Button-1>", self._on_mouse_clicked)
+        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_released)
+        self.canvas.bind("<Motion>", self._on_mouse_moved)
+        self._parent.bind("<Key>", self._on_key_pressed)
+        self._parent.bind("<BackSpace>", self._on_backspace_pressed)
 
     def _draw_grid(self):
         """
@@ -252,39 +255,78 @@ class SudokuUI(tk.Frame):
                 outline="red", tags="cursor"
             )
 
-    def _cell_left_clicked(self, event):
+    def _get_cell(self, event, fuzzy=False):
         x, y = event.x, event.y
         if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
             #self.canvas.focus_set()
 
             # get row and col numbers from x,y coordinates
-            selection = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
+            (row, col) = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
+            if fuzzy:
+                (ox, oy) = ((col + 0.5) * SIDE + MARGIN, (row + 0.5) * SIDE + MARGIN)
+                if (ox - x)**2 + (oy - y)**2 >= (SIDE/2)**2:
+                    return None
+            return (row, col)
+        else:
+            return None
 
+    def _on_mouse_clicked(self, event):
+        selection = self._get_cell(event)
+        if selection is not None:
             if self.edit_mode == EditMode.DIGIT:
                 # if cell was selected already - deselect it
                 if selection == self._selection:
                     self._selection = None
                 else:
                     self._selection = selection
-            else:
-                print("TODO L")
+            elif self.edit_mode == EditMode.THERMOMETER:
+                self._thermo = [selection]
+                # self._draw_thermo() # Doesn't work?
         else:
             self._selection = None
 
         self._draw_cursor()
 
-    def _cell_right_clicked(self, event):
-        x, y = event.x, event.y
-        if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
-            #self.canvas.focus_set()
+    def _on_mouse_released(self, event):
+        if self._thermo is None:
+            return
+        print(self._thermo)
+        self._thermo = None
+        # TODO
 
-            # get row and col numbers from x,y coordinates
-            selection = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
+    def _on_mouse_moved(self, event):
+        if self._thermo is None:
+            return
+        selection = self._get_cell(event, fuzzy=True)
+        if selection is not None:
+            if selection != self._thermo[-1]:
+                self._thermo.append(selection)
+                self._draw_thermo()
 
-            if self.edit_mode == EditMode.THERMO:
-                print("TODO R")
+    def _draw_thermo(self):
+        last_row, last_col = None, None
+        for (row, col) in self._thermo:
+            if last_row is None:
+                x0 = MARGIN + (col + 0.05) * SIDE + 1
+                y0 = MARGIN + (row + 0.05) * SIDE + 1
+                x1 = MARGIN + (col + 0.95) * SIDE - 1
+                y1 = MARGIN + (row + 0.95) * SIDE - 1
+                self.canvas.create_oval(
+                    x0, y0, x1, y1,
+                    fill=THERMO_COLOR, outline=""
+                )
+            else:
+                x0 = MARGIN + (last_col + 0.5) * SIDE + 1
+                y0 = MARGIN + (last_row + 0.5) * SIDE + 1
+                x1 = MARGIN + (     col + 0.5) * SIDE + 1
+                y1 = MARGIN + (     row + 0.5) * SIDE + 1
+                self.canvas.create_line(
+                    x0, y0, x1, y1,
+                    fill=THERMO_COLOR, width=20, capstyle=tk.ROUND
+                )
+            last_row, last_col = row, col
 
-    def _key_pressed(self, event):
+    def _on_key_pressed(self, event):
         if self._selection is None:
             return
         if event.char not in "123456789":
@@ -297,7 +339,7 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
         self._draw_cursor()
 
-    def _backspace_pressed(self, event):
+    def _on_backspace_pressed(self, event):
         if self._selection is None:
             return
         (row, col) = self._selection
@@ -346,6 +388,6 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     SudokuUI(root, sudoku)
-    root.geometry("%dx%d" % (WIDTH + 130, HEIGHT + 110))
+    root.geometry("%dx%d" % (WIDTH + 180, HEIGHT + 110))
     root.resizable(False, False)
     root.mainloop()
