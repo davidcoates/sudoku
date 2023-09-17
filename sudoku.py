@@ -28,11 +28,14 @@ class Sudoku(object):
             board.append([])
 
             for c in line:
-                if not c.isdigit():
+                if c == '_':
+                    board[-1].append(None)
+                elif '1' <= c <= '9':
+                    board[-1].append(int(c))
+                else:
                     raise SudokuError(
-                        "Valid characters for a sudoku sudoku must be in 0-9"
+                        "Valid characters for a sudoku sudoku must be in 1-9"
                     )
-                board[-1].append(int(c))
 
         if len(board) != 9:
             raise SudokuError("Each sudoku sudoku must be 9 lines long")
@@ -40,7 +43,7 @@ class Sudoku(object):
 
     def save(self):
         sudoku_dict = {
-            "board": [ ''.join(map(str, row)) for row in self.board ]
+            "board": [ ''.join(map(lambda digit : str(digit) if digit else '_', row)) for row in self.board ]
         }
         with open(self.sudoku_filename, 'w') as sudoku_file:
             json.dump(sudoku_dict, sudoku_file)
@@ -52,7 +55,7 @@ class Sudoku(object):
                 sudoku = json.load(sudoku_file)
                 self.board = self.__create_board(sudoku["board"])
         except FileNotFoundError:
-            self.board = [ [ 0 for c in range(9) ] for r in range(9) ]
+            self.board = [ [ None for c in range(9) ] for r in range(9) ]
 
     def set(self, r, c, value):
         self.board[r][c] = value
@@ -70,7 +73,7 @@ class Sudoku(object):
         domains = {}
         for r in range(9):
             for c in range(9):
-                if self.board[r][c] == 0:
+                if self.board[r][c] is None:
                     domain = [1, 2, 3, 4, 5, 6, 7, 8, 9]
                 else:
                     domain = [ self.board[r][c] ]

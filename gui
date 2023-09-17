@@ -32,43 +32,52 @@ class SudokuUI(tk.Frame):
         self.sudoku = sudoku
         tk.Frame.__init__(self, parent)
         self.parent = parent
-
-        self.row, self.col = -1, -1
+        self.selection = None
 
         self.__initUI()
 
     def __initUI(self):
         self.parent.title("Dave's Sudoku Solver")
         self.pack()
-        self.canvas = tk.Canvas(self,
+
+        left = tk.Frame(master=self)
+        left.pack(side=tk.LEFT, fill=tk.NONE)
+
+        right = tk.Frame(master=self)
+        right.pack(side=tk.RIGHT, fill=tk.X)
+
+        self.canvas = tk.Canvas(left,
                                 width=WIDTH,
                                 height=HEIGHT)
-        self.canvas.pack(side=tk.TOP, fill=tk.BOTH)
+        self.canvas.pack(side=tk.TOP, fill=tk.NONE)
 
-        #bottom = tk.Frame(master=self)
-        #bottom.pack(side=tk.BOTTOM, fill=tk.BOTH)
+        bottom = tk.Frame(master=left)
+        bottom.pack(side=tk.BOTTOM, fill=tk.NONE)
 
-        reset_button = tk.Button(self,
+        # Edit panel
+        #edit_mode = tk.Radiobutton(right,
+        #               text="")
+
+
+        # Control panel
+        reset_button = tk.Button(bottom,
                                  text="Reset",
                                  width=20,
                                  command=self.__reset)
-        reset_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=20, pady=10)
-        save_button = tk.Button(self,
+        reset_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=10)
+
+        save_button = tk.Button(bottom,
                                 text="Save",
                                 width=20,
                                 command=self.__save)
-        save_button.pack(side=tk.RIGHT, fill=tk.BOTH, padx=20, pady=10)
+        save_button.pack(side=tk.RIGHT, fill=tk.BOTH, padx=10)
 
-        solve_button = tk.Button(self,
+        solve_button = tk.Button(bottom,
                                  text="",
                                  width=20,
-                                 command=self.__solve)
-        solve_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=0, pady=10)
+                                command=self.__solve)
+        solve_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=10)
 
-        #solve_status = tk.Label(bottom,
-        #                        text="",
-        #                        width=20)
-        #solve_status.pack(side=tk.RIGHT, fill=tk.BOTH, padx=20, pady=10)
 
         def on_solve_state_updated():
             solve_button.config(text=f"Solve ({self.sudoku.solve_state})")
@@ -80,8 +89,8 @@ class SudokuUI(tk.Frame):
         self.__draw_sudoku()
 
         self.canvas.bind("<Button-1>", self.__cell_clicked)
-        self.canvas.bind("<Double-1>", self.__cell_double_clicked)
         self.canvas.bind("<Key>", self.__key_pressed)
+        self.canvas.bind("<BackSpace>", self.__backspace_pressed)
 
     def __draw_grid(self):
         """
@@ -107,7 +116,7 @@ class SudokuUI(tk.Frame):
         for i in range(9):
             for j in range(9):
                 answer = self.sudoku.get(i, j)
-                if answer != 0:
+                if answer is not None:
                     x = MARGIN + j * SIDE + SIDE / 2
                     y = MARGIN + i * SIDE + SIDE / 2
                     self.canvas.create_text(
@@ -116,35 +125,16 @@ class SudokuUI(tk.Frame):
 
     def __draw_cursor(self):
         self.canvas.delete("cursor")
-        if self.row >= 0 and self.col >= 0:
-            x0 = MARGIN + self.col * SIDE + 1
-            y0 = MARGIN + self.row * SIDE + 1
-            x1 = MARGIN + (self.col + 1) * SIDE - 1
-            y1 = MARGIN + (self.row + 1) * SIDE - 1
+        if self.selection is not None:
+            (row, col) = self.selection
+            x0 = MARGIN + col * SIDE + 1
+            y0 = MARGIN + row * SIDE + 1
+            x1 = MARGIN + (col + 1) * SIDE - 1
+            y1 = MARGIN + (row + 1) * SIDE - 1
             self.canvas.create_rectangle(
                 x0, y0, x1, y1,
                 outline="red", tags="cursor"
             )
-
-    def __draw_victory(self):
-        # create a oval (which will be a circle)
-        x0 = y0 = MARGIN + SIDE * 2
-        x1 = y1 = MARGIN + SIDE * 7
-        self.canvas.create_oval(
-            x0, y0, x1, y1,
-            tags="victory", fill="dark orange", outline="orange"
-        )
-        # create text
-        x = y = MARGIN + 4 * SIDE + SIDE / 2
-        self.canvas.create_text(
-            x, y,
-            text="You win!", tags="victory",
-            fill="white", font=("Arial", 32)
-        )
-
-
-    def __cell_double_clicked(self, event):
-        self.__cell_clicked(event)
 
     def __cell_clicked(self, event):
         x, y = event.x, event.y
@@ -152,24 +142,37 @@ class SudokuUI(tk.Frame):
             self.canvas.focus_set()
 
             # get row and col numbers from x,y coordinates
-            row, col = (y - MARGIN) // SIDE, (x - MARGIN) // SIDE
+            selection = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
 
             # if cell was selected already - deselect it
-            if (row, col) == (self.row, self.col):
-                self.row, self.col = -1, -1
+            if selection == self.selection:
+                self.selection = None
             else:
-                self.row, self.col = row, col
+                self.selection = selection
         else:
-            self.row, self.col = -1, -1
+            self.selection = None
 
         self.__draw_cursor()
 
     def __key_pressed(self, event):
-        if self.row >= 0 and self.col >= 0 and event.char in "1234567890":
-            self.sudoku.set(self.row, self.col, int(event.char))
-            self.col, self.row = -1, -1
-            self.__draw_sudoku()
-            self.__draw_cursor()
+        if self.selection is None:
+            return
+        if event.char not in "123456789":
+            return
+        (row, col) = self.selection
+        self.sudoku.set(row, col, int(event.char))
+        self.selection = None
+        self.__draw_sudoku()
+        self.__draw_cursor()
+
+    def __backspace_pressed(self, event):
+        if self.selection is None:
+            return
+        (row, col) = self.selection
+        self.sudoku.set(row, col, None)
+        self.selection = None
+        self.__draw_sudoku()
+        self.__draw_cursor()
 
     def __reset(self):
         self.sudoku.reset()
@@ -190,5 +193,6 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     SudokuUI(root, sudoku)
-    root.geometry("%dx%d" % (WIDTH, HEIGHT + 80))
+    root.geometry("%dx%d" % (WIDTH + 120, HEIGHT + 50))
+    root.resizable(False, False)
     root.mainloop()
