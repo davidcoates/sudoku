@@ -74,7 +74,7 @@ class Sudoku(object):
         def distinct(coordinates):
             variables = [ f"{r+1}:{c+1}" for (r, c) in coordinates ]
             return {
-                "type": "DistinctN",
+                "type": "Permutation",
                 "variables": variables,
                 "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9]
             }

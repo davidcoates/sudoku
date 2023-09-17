@@ -36,7 +36,7 @@ fn main() {
     let mut constraints = Constraints::new();
     for constraint in input["constraints"].as_array().unwrap() {
         match constraint["type"].as_str().unwrap() {
-            "DistinctN" => {
+            "Permutation" => {
                 let mut variables = BitSet::new();
                 for variable in constraint["variables"].as_array().unwrap() {
                     let variable = variable.as_str().unwrap();
@@ -48,7 +48,7 @@ fn main() {
                     domain.insert(usize::try_from(digit.as_u64().unwrap()).unwrap());
                 }
 
-                constraints.push(BoxedConstraint::new(Rc::new(DistinctN::new(variables, domain))));
+                constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(variables, domain))));
             }
             _ => panic!("unknown type"),
         }

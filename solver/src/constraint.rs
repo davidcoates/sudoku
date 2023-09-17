@@ -95,18 +95,18 @@ fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains) -> Resu
 
 // Distinct digits covering a domain
 #[derive(Clone,Copy)]
-pub struct DistinctN {
+pub struct Permutation {
     variables: BitSet,
     domain: Domain,
 }
 
-impl DistinctN {
+impl Permutation {
 
     pub fn new(variables: BitSet, domain: Domain) -> Self {
         if variables.len() != domain.len() {
-            panic!("bad DistinctN: #variables != #domain")
+            panic!("bad Permutation: #variables != #domain")
         }
-        return DistinctN {
+        return Permutation {
             variables,
             domain
         };
@@ -114,7 +114,7 @@ impl DistinctN {
 
 }
 
-impl Constraint for DistinctN {
+impl Constraint for Permutation {
 
     fn simplify(&self, domains: &mut Domains) -> Result {
 
@@ -146,8 +146,8 @@ impl Constraint for DistinctN {
             }
             if union.len() == selection.len() {
                 let selection_complement = self.variables.difference(selection);
-                let c1 = BoxedConstraint::new(Rc::new(DistinctN::new(selection, union)));
-                let c2 = BoxedConstraint::new(Rc::new(DistinctN::new(selection_complement, self.domain.difference(union))));
+                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(selection, union)));
+                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(selection_complement, self.domain.difference(union))));
                 return join(c1, c2, domains);
             }
         }
@@ -185,8 +185,8 @@ impl Constraint for DistinctN {
                     }
                 }
                 if ok {
-                    let c1 = BoxedConstraint::new(Rc::new(DistinctN::new(selection, intersection)));
-                    let c2 = BoxedConstraint::new(Rc::new(DistinctN::new(selection_complement, self.domain.difference(intersection))));
+                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(selection, intersection)));
+                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(selection_complement, self.domain.difference(intersection))));
                     return join(c1, c2, domains);
                 }
             }
