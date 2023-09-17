@@ -77,12 +77,11 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
-class ThermoAction(Action):
+class ConstraintAction(Action):
 
     def __init__(self, sudoku, thermo):
         self._sudoku = sudoku
-        seld._thermo = thermo
-
+        self._thermo = thermo
 
     def apply(self):
         self._sudoku.constraints.append(self._thermo)
@@ -157,12 +156,12 @@ class SudokuUI(tk.Frame):
         edit_panel = tk.Frame(master=right_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
         edit_panel.pack(side=tk.LEFT)
 
-        self.canvas = tk.Canvas(left_panel,
-                                width=WIDTH,
-                                height=HEIGHT,
-                                background=BACKGROUND_COLOR,
-                                highlightthickness=0)
-        self.canvas.pack(side=tk.TOP)
+        self._canvas = tk.Canvas(left_panel,
+                                 width=WIDTH,
+                                 height=HEIGHT,
+                                 background=BACKGROUND_COLOR,
+                                 highlightthickness=0)
+        self._canvas.pack(side=tk.TOP)
 
         bottom_panel = tk.Frame(master=left_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
         bottom_panel.pack(side=tk.BOTTOM)
@@ -220,9 +219,9 @@ class SudokuUI(tk.Frame):
         self._draw_grid()
         self._draw_sudoku()
 
-        self.canvas.bind("<Button-1>", self._on_mouse_clicked)
-        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_released)
-        self.canvas.bind("<Motion>", self._on_mouse_moved)
+        self._canvas.bind("<Button-1>", self._on_mouse_clicked)
+        self._canvas.bind("<ButtonRelease-1>", self._on_mouse_released)
+        self._canvas.bind("<Motion>", self._on_mouse_moved)
         self._parent.bind("<Key>", self._on_key_pressed)
         self._parent.bind("<BackSpace>", self._on_backspace_pressed)
 
@@ -237,35 +236,42 @@ class SudokuUI(tk.Frame):
             y0 = MARGIN
             x1 = MARGIN + i * SIDE
             y1 = HEIGHT - MARGIN
-            self.canvas.create_line(x0, y0, x1, y1, fill=color)
+            self._canvas.create_line(x0, y0, x1, y1, fill=color)
 
             x0 = MARGIN
             y0 = MARGIN + i * SIDE
             x1 = WIDTH - MARGIN
             y1 = MARGIN + i * SIDE
-            self.canvas.create_line(x0, y0, x1, y1, fill=color)
+            self._canvas.create_line(x0, y0, x1, y1, fill=color)
 
     def _draw_sudoku(self):
-        self.canvas.delete("numbers")
+        self._canvas.delete("numbers")
+        self._canvas.delete("constraints")
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
                 if answer is not None:
                     x = MARGIN + j * SIDE + SIDE / 2
                     y = MARGIN + i * SIDE + SIDE / 2
-                    self.canvas.create_text(
+                    self._canvas.create_text(
                         x, y, text=answer, tags="numbers", fill="black", font=("Stencil", 30)
                     )
+        for constraint in self._sudoku.constraints:
+            if isinstance(constraint, Thermo):
+                self._draw_thermo(constraint.path)
+            else:
+                assert(False)
+
 
     def _draw_cursor(self):
-        self.canvas.delete("cursor")
+        self._canvas.delete("cursor")
         if self._selection is not None:
             (row, col) = self._selection
             x0 = MARGIN + col * SIDE + 1
             y0 = MARGIN + row * SIDE + 1
             x1 = MARGIN + (col + 1) * SIDE - 1
             y1 = MARGIN + (row + 1) * SIDE - 1
-            self.canvas.create_rectangle(
+            self._canvas.create_rectangle(
                 x0, y0, x1, y1,
                 outline="red", tags="cursor"
             )
@@ -273,7 +279,7 @@ class SudokuUI(tk.Frame):
     def _get_cell(self, event, fuzzy=False):
         x, y = event.x, event.y
         if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
-            #self.canvas.focus_set()
+            #self._canvas.focus_set()
 
             # get row and col numbers from x,y coordinates
             (row, col) = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
@@ -296,7 +302,6 @@ class SudokuUI(tk.Frame):
                     self._selection = selection
             elif self.edit_mode == EditMode.THERMOMETER:
                 self._thermo = [selection]
-                # self._draw_thermo() # Doesn't work?
         else:
             self._selection = None
 
@@ -305,9 +310,8 @@ class SudokuUI(tk.Frame):
     def _on_mouse_released(self, event):
         if self._thermo is None:
             return
-        print(self._thermo)
+        self._apply(ConstraintAction(self._sudoku, Thermo(self._thermo)))
         self._thermo = None
-        # TODO
 
     def _on_mouse_moved(self, event):
         if self._thermo is None:
@@ -316,28 +320,28 @@ class SudokuUI(tk.Frame):
         if selection is not None:
             if selection != self._thermo[-1]:
                 self._thermo.append(selection)
-                self._draw_thermo()
+                self._draw_thermo(self._thermo)
 
-    def _draw_thermo(self):
+    def _draw_thermo(self, path):
         last_row, last_col = None, None
-        for (row, col) in self._thermo:
+        for (row, col) in path:
             if last_row is None:
                 x0 = MARGIN + (col + 0.05) * SIDE + 1
                 y0 = MARGIN + (row + 0.05) * SIDE + 1
                 x1 = MARGIN + (col + 0.95) * SIDE - 1
                 y1 = MARGIN + (row + 0.95) * SIDE - 1
-                self.canvas.create_oval(
+                self._canvas.create_oval(
                     x0, y0, x1, y1,
-                    fill=THERMO_COLOR, outline=""
+                    fill=THERMO_COLOR, outline="", tags="constraints"
                 )
             else:
                 x0 = MARGIN + (last_col + 0.5) * SIDE + 1
                 y0 = MARGIN + (last_row + 0.5) * SIDE + 1
                 x1 = MARGIN + (     col + 0.5) * SIDE + 1
                 y1 = MARGIN + (     row + 0.5) * SIDE + 1
-                self.canvas.create_line(
+                self._canvas.create_line(
                     x0, y0, x1, y1,
-                    fill=THERMO_COLOR, width=20, capstyle=tk.ROUND
+                    fill=THERMO_COLOR, width=20, capstyle=tk.ROUND, tags="constraints"
                 )
             last_row, last_col = row, col
 
