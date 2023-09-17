@@ -14,7 +14,6 @@ class Sudoku(object):
     """
     def __init__(self, sudoku_filename):
         self._sudoku_filename = sudoku_filename
-        self.on_solve_state_updated = None
         self.reset()
 
     def _create_board(self, board_json):
@@ -49,7 +48,6 @@ class Sudoku(object):
             json.dump(sudoku_dict, sudoku_file)
 
     def reset(self):
-        self._set_solve_state("unknown")
         try:
             with open(self._sudoku_filename, 'r') as sudoku_file:
                 sudoku = json.load(sudoku_file)
@@ -59,19 +57,9 @@ class Sudoku(object):
 
     def set(self, r, c, value):
         self._board[r][c] = value
-        self._set_solve_state("unknown")
 
     def get(self, r, c):
         return self._board[r][c]
-
-    @property
-    def solve_state(self):
-        return self._solve_state
-
-    def _set_solve_state(self, solve_state):
-        self._solve_state = solve_state
-        if self.on_solve_state_updated:
-            self.on_solve_state_updated()
 
     def solve(self):
         domains = {}
@@ -107,11 +95,13 @@ class Sudoku(object):
             input=json.dumps(solver_input),
             text=True,
         ))
-        self._set_solve_state(solver_output["result"])
-        if self._solve_state == "solved" or self._solve_state == "stuck":
+        result = solver_output["result"]
+        board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
+        if result == "solved" or result == "stuck":
             for variable, domain in solver_output["domains"].items():
                 if len(domain) == 1:
                     [r, c] = variable.split(':')
                     r, c = int(r) - 1, int(c) - 1
-                    self._board[r][c] = domain[0]
+                    board[r][c] = domain[0]
+        return (result, board)
 

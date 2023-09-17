@@ -22,6 +22,23 @@ class Action(ABC):
         pass
 
 
+class MultiAction():
+
+    def __init__(self):
+        self._actions = []
+
+    def push(self, action):
+        self._actions.append(action)
+
+    def apply(self):
+        for action in self._actions:
+            action.apply()
+
+    def undo(self):
+        for action in reversed(self._actions):
+            action.undo()
+
+
 class ActionStack():
 
     def __init__(self):
@@ -79,6 +96,11 @@ def parse_arguments():
     return args['sudoku']
 
 
+BACKGROUND_COLOR = "white smoke"
+INLAY_COLOR = "linen"
+BORDER_COLOR = "black"
+BUTTON_COLOR = "white"
+
 class SudokuUI(tk.Frame):
     """
     The Tkinter UI, responsible for drawing the board and accepting user input.
@@ -91,9 +113,9 @@ class SudokuUI(tk.Frame):
         self._actions = ActionStack()
         self._initUI()
 
-    def _apply(self, action):
-        action.apply()
-        self._actions.push(action)
+    def _set_solve_state(self, solve_state):
+        self._solve_state = solve_state
+        self._solve_label.config(text=f"Solver status: {self._solve_state.title()}")
 
     def _create_control_button(self, panel, name, action):
         image = tk.PhotoImage(file=f"resources/{name}.png").subsample(16, 16)
@@ -101,30 +123,40 @@ class SudokuUI(tk.Frame):
                            image=image,
                            width=50,
                            height=50,
-                           command=action)
-        button.pack(side=tk.LEFT, padx=10)
+                           command=action,
+                           background=BUTTON_COLOR)
+        button.pack(side=tk.LEFT, padx=10, pady=5)
         self._control_images.append(image) # delay GC
 
     def _initUI(self):
         self._parent.title("Dave's Sudoku Solver")
+        self._parent.configure(background=BACKGROUND_COLOR)
         self.pack()
 
-        left = tk.Frame(master=self)
-        left.pack(side=tk.LEFT, fill=tk.NONE)
+        left_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
+        left_panel.pack(side=tk.LEFT)
 
-        right = tk.Frame(master=self)
-        right.pack(side=tk.RIGHT, fill=tk.X)
+        right_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH)
 
-        self.canvas = tk.Canvas(left,
+        edit_panel = tk.Frame(master=right_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        edit_panel.pack(side=tk.LEFT)
+
+        self.canvas = tk.Canvas(left_panel,
                                 width=WIDTH,
-                                height=HEIGHT)
-        self.canvas.pack(side=tk.TOP, fill=tk.NONE)
+                                height=HEIGHT,
+                                background=BACKGROUND_COLOR,
+                                highlightthickness=0)
+        self.canvas.pack(side=tk.TOP)
 
-        control_panel = tk.Frame(master=left)
-        control_panel.pack(side=tk.BOTTOM, fill=tk.NONE)
+        bottom_panel = tk.Frame(master=left_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        bottom_panel.pack(side=tk.BOTTOM)
 
-        info_panel = tk.Frame(master=control_panel)
-        info_panel.pack(side=tk.BOTTOM, fill=tk.NONE)
+        control_panel = tk.Frame(master=bottom_panel, background=INLAY_COLOR)
+        control_panel.pack(side=tk.TOP)
+
+        info_panel = tk.Frame(master=bottom_panel, background=INLAY_COLOR)
+        info_panel.pack(side=tk.BOTTOM)
 
         # Edit panel
         edit_mode = tk.IntVar()
@@ -135,11 +167,16 @@ class SudokuUI(tk.Frame):
                 self._draw_cursor()
 
         for em in EditMode:
-            option = tk.Radiobutton(right,
+            option = tk.Radiobutton(edit_panel,
                                     text=(em.name.title()),
                                     variable=edit_mode,
                                     value=em.value,
-                                    command=on_edit_mode_changed)
+                                    command=on_edit_mode_changed,
+                                    background=INLAY_COLOR,
+                                    highlightthickness=0,
+                                    padx=5,
+                                    pady=5,
+                                    font=("Courier New", 10))
             if em == EditMode.DIGIT:
                 option.select()
                 on_edit_mode_changed()
@@ -154,24 +191,22 @@ class SudokuUI(tk.Frame):
         self._create_control_button(control_panel, "redo", self._redo)
         self._create_control_button(control_panel, "solve", self._solve)
 
-        solve_label = tk.Label(info_panel,
-                               text="",
-                               width=20)
-        solve_label.pack(side=tk.BOTTOM, pady=10)
-
-        def on_solve_state_updated():
-            solve_label.config(text=f"Solver status: {self._sudoku.solve_state.title()}")
-        self._sudoku.on_solve_state_updated = on_solve_state_updated
-        on_solve_state_updated()
-
+        self._solve_label = tk.Label(info_panel,
+                                     text="",
+                                     width=30,
+                                     justify="center",
+                                     font=("Courier New", 10),
+                                     background=INLAY_COLOR)
+        self._solve_label.pack(side=tk.BOTTOM, pady=5)
+        self._set_solve_state("unknown")
 
         self._draw_grid()
         self._draw_sudoku()
 
-        self.canvas.bind("<Button-1>", self._cell_left_clicked)
-        self.canvas.bind("<Button-3>", self._cell_right_clicked)
-        self.canvas.bind("<Key>", self._key_pressed)
-        self.canvas.bind("<BackSpace>", self._backspace_pressed)
+        self._parent.bind("<Button-1>", self._cell_left_clicked)
+        self._parent.bind("<Button-3>", self._cell_right_clicked)
+        self._parent.bind("<Key>", self._key_pressed)
+        self._parent.bind("<BackSpace>", self._backspace_pressed)
 
     def _draw_grid(self):
         """
@@ -220,7 +255,7 @@ class SudokuUI(tk.Frame):
     def _cell_left_clicked(self, event):
         x, y = event.x, event.y
         if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
-            self.canvas.focus_set()
+            #self.canvas.focus_set()
 
             # get row and col numbers from x,y coordinates
             selection = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
@@ -241,7 +276,7 @@ class SudokuUI(tk.Frame):
     def _cell_right_clicked(self, event):
         x, y = event.x, event.y
         if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
-            self.canvas.focus_set()
+            #self.canvas.focus_set()
 
             # get row and col numbers from x,y coordinates
             selection = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
@@ -271,23 +306,36 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
         self._draw_cursor()
 
+    def _apply(self, action, solve_state="unknown"):
+        action.apply()
+        self._set_solve_state(solve_state)
+        self._actions.push(action)
+        self._draw_sudoku()
+
     def _reset(self):
         self._sudoku.reset()
+        self._set_solve_state("unknown")
         self._draw_sudoku()
 
     def _solve(self):
-        self._sudoku.solve()
-        self._draw_sudoku()
+        (solve_state, board) = self._sudoku.solve()
+        action = MultiAction()
+        for r, row in enumerate(board):
+            for c, digit in enumerate(row):
+                action.push(DigitAction(self._sudoku, r, c, digit))
+        self._apply(action, solve_state)
 
     def _save(self):
         self._sudoku.save()
 
     def _undo(self):
         self._actions.undo()
+        self._set_solve_state("unknown")
         self._draw_sudoku()
 
     def _redo(self):
         self._actions.redo()
+        self._set_solve_state("unknown")
         self._draw_sudoku()
 
 
@@ -298,6 +346,6 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     SudokuUI(root, sudoku)
-    root.geometry("%dx%d" % (WIDTH + 140, HEIGHT + 100))
+    root.geometry("%dx%d" % (WIDTH + 130, HEIGHT + 110))
     root.resizable(False, False)
     root.mainloop()
