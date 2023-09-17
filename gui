@@ -178,6 +178,7 @@ class SudokuUI(tk.Frame):
                                     highlightthickness=0,
                                     padx=5,
                                     pady=5,
+                                    fg="black",
                                     font=("Courier New", 10))
             if em == EditMode.DIGIT:
                 option.select()
@@ -197,6 +198,7 @@ class SudokuUI(tk.Frame):
                                      text="",
                                      width=30,
                                      justify="center",
+                                     fg ="black",
                                      font=("Courier New", 10),
                                      background=INLAY_COLOR)
         self._solve_label.pack(side=tk.BOTTOM, pady=5)
@@ -389,5 +391,5 @@ if __name__ == '__main__':
     root = tk.Tk()
     SudokuUI(root, sudoku)
     root.geometry("%dx%d" % (WIDTH + 180, HEIGHT + 110))
-    root.resizable(False, False)
+    #root.resizable(False, False)
     root.mainloop()
