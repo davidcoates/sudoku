@@ -4,4 +4,4 @@ pub type Domain = BitSet;
 pub type Domains = Vec<Domain>;
 
 pub type Variable = usize;
-pub type Variables = BitSet;
+pub type VariableSet = BitSet;

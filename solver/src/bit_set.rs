@@ -87,10 +87,10 @@ impl BitSet {
 
 }
 
-impl fmt::Debug for BitSet {
+impl fmt::Display for BitSet {
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:b}", self.bits)
+        return write!(f, "[{}]",  self.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","));
     }
 
 }

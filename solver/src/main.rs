@@ -13,18 +13,34 @@ use solver::*;
 
 use serde_json::json;
 
+struct TrackerImpl {
+    variable_index_to_name: Vec<String>,
+}
+
+impl Tracker for TrackerImpl {
+
+    fn variable_name(&self, variable: Variable) -> &String {
+        return &self.variable_index_to_name[variable];
+    }
+
+    fn on_progress(&mut self, comment: String) {
+        eprint!("{}\n", comment);
+    }
+
+}
+
 fn main() {
     let stdin = std::io::stdin();
     let input = serde_json::from_reader::<std::io::Stdin, serde_json::Value>(stdin).unwrap();
 
-    let mut index_to_variable = Vec::new();
-    let mut variable_to_index: HashMap<String, usize> = HashMap::new();
+    let mut variable_index_to_name = Vec::new();
+    let mut variable_name_to_index: HashMap<String, usize> = HashMap::new();
 
     let mut domains = Domains::new();
     for (variable, domain_list) in input["domains"].as_object().unwrap() {
-        let index = index_to_variable.len();
-        index_to_variable.push(variable);
-        variable_to_index.insert(variable.to_string(), index);
+        let index = variable_index_to_name.len();
+        variable_index_to_name.push(variable.to_string());
+        variable_name_to_index.insert(variable.to_string(), index);
 
         let mut domain = Domain::new();
         for digit in domain_list.as_array().unwrap() {
@@ -35,13 +51,13 @@ fn main() {
 
     let mut constraints = Constraints::new();
     for constraint in input["constraints"].as_array().unwrap() {
-        let description = constraints["description"].as_str().unwrap();
+        let description = constraint["description"].as_str().unwrap().to_string();
         match constraint["type"].as_str().unwrap() {
             "Permutation" => {
                 let mut variables = BitSet::new();
                 for variable in constraint["variables"].as_array().unwrap() {
                     let variable = variable.as_str().unwrap();
-                    variables.insert(variable_to_index[variable]);
+                    variables.insert(variable_name_to_index[variable]);
                 }
 
                 let mut domain = Domain::new();
@@ -52,10 +68,10 @@ fn main() {
                 constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(description, variables, domain))));
             }
             "Increasing" => {
-                let mut variables = BitSet::new();
+                let mut variables = Vec::new();
                 for variable in constraint["variables"].as_array().unwrap() {
                     let variable = variable.as_str().unwrap();
-                    variables.insert(variable_to_index[variable]);
+                    variables.push(variable_name_to_index[variable]);
                 }
 
                 constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(description, variables))));
@@ -65,8 +81,12 @@ fn main() {
 
     }
 
+    let mut tracker = TrackerImpl{
+        variable_index_to_name: variable_index_to_name,
+    };
+
     let mut puzzle = Puzzle{ domains, constraints };
-    let result = puzzle.solve();
+    let result = puzzle.solve(&mut tracker);
 
     let result_str = match result {
         Result::Stuck => "stuck",
@@ -77,7 +97,7 @@ fn main() {
 
     let mut domains: HashMap<String, serde_json::Value> = HashMap::new();
     for (index, domain) in puzzle.domains.iter().enumerate() {
-        let variable = index_to_variable[index];
+        let variable = &tracker.variable_index_to_name[index];
         let domain = domain.iter().map(|x| json!(x)).collect::<Vec<serde_json::Value>>();
         domains.insert(variable.to_string(), json!(domain));
     }

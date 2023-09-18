@@ -10,12 +10,12 @@ pub struct Puzzle {
 // only solved constraints
 // order of constraints
 // only constraints with dirty variables
-fn simplify(domains: &mut Domains, constraints: &Constraints) -> Result {
+fn simplify(domains: &mut Domains, constraints: &Constraints, tracker: &mut dyn Tracker) -> Result {
     // TODO
     let mut new_constraints = Constraints::new();
     let mut any_progress = false;
     for constraint in constraints {
-        let result = constraint.simplify(domains);
+        let result = constraint.simplify(domains, tracker);
         match result {
             Result::Unsolvable                    => { return Result::Unsolvable; },
             Result::Solved                        => {},
@@ -36,10 +36,10 @@ fn simplify(domains: &mut Domains, constraints: &Constraints) -> Result {
 
 impl Puzzle {
 
-    pub fn solve(self: &mut Puzzle) -> Result {
-        let result = simplify(&mut self.domains, &self.constraints);
+    pub fn solve(self: &mut Puzzle, tracker: &mut dyn Tracker) -> Result {
+        let result = simplify(&mut self.domains, &self.constraints, tracker);
         match result {
-            Result::Progress(constraints) => { self.constraints = constraints; return self.solve(); },
+            Result::Progress(constraints) => { self.constraints = constraints; return self.solve(tracker); },
             _ => result,
         }
     }
