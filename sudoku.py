@@ -57,29 +57,40 @@ class Sudoku(object):
                     domain = [ self._board[r][c] ]
                 domains[f"{r+1}:{c+1}"] = domain
 
-        def permutation(coordinates):
+        constraints = []
+
+        def permutation(coordinates, comment):
             variables = [ f"{r+1}:{c+1}" for (r, c) in coordinates ]
             return {
                 "type": "Permutation",
                 "variables": variables,
-                "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                "comment": comment
             }
-        constraints = []
         for r in range(9):
-            constraints.append(permutation([(r, c) for c in range(9)]))
+            constraints.append(permutation(
+                [(r, c) for c in range(9)],
+                f"sudoku row({r+1})"
+            ))
         for c in range(9):
-            constraints.append(permutation([(r, c) for r in range(9)]))
+            constraints.append(permutation(
+                [(r, c) for r in range(9)],
+                f"sudoku col({c+1})"
+            ))
         for r in range(3):
             for c in range(3):
-                constraints.append(permutation([(r*3 + i, c*3 + j) for i in range(3) for j in range(3)]))
+                constraints.append(permutation(
+                    [(r*3 + i, c*3 + j) for i in range(3) for j in range(3)],
+                    f"sudoku box({r*3 + c + 1})"
+                ))
 
         def thermo(thermo):
             variables = [ f"{r+1}:{c+1}" for (r, c) in thermo.path ]
             return {
                 "type": "Increasing",
-                "variables": variables
+                "variables": variables,
+                "comment": "thermometer"
             }
-
         for constraint in self.constraints:
             if isinstance(constraint, Thermo):
                 constraints.append(thermo(constraint))
@@ -100,11 +111,10 @@ class Sudoku(object):
         ))
         result = solver_output["result"]
         board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
-        if result == "solved" or result == "stuck":
-            for variable, domain in solver_output["domains"].items():
-                if len(domain) == 1:
-                    [r, c] = variable.split(':')
-                    r, c = int(r) - 1, int(c) - 1
-                    board[r][c] = domain[0]
+        for variable, domain in solver_output["domains"].items():
+            if len(domain) == 1:
+                [r, c] = variable.split(':')
+                r, c = int(r) - 1, int(c) - 1
+                board[r][c] = domain[0]
         return (result, board)
 
