@@ -129,7 +129,7 @@ class SudokuUI(tk.Frame):
 
     def _set_solve_state(self, solve_state):
         self._solve_state = solve_state
-        self._solve_label.config(text=f"Solver status: {self._solve_state.title()}")
+        self._solve_label.config(text=f"Solver status: {self._solve_state}")
 
     def _create_control_button(self, panel, name, action):
         image = tk.PhotoImage(file=f"resources/{name}.png").subsample(16, 16)
@@ -214,7 +214,7 @@ class SudokuUI(tk.Frame):
                                      font=("Courier New", 10),
                                      background=INLAY_COLOR)
         self._solve_label.pack(side=tk.BOTTOM, pady=5)
-        self._set_solve_state("unknown")
+        self._set_solve_state("Unknown")
 
         self._draw_grid()
         self._draw_sudoku()
@@ -367,7 +367,7 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
         self._draw_cursor()
 
-    def _apply(self, action, solve_state="unknown"):
+    def _apply(self, action, solve_state="Unknown"):
         action.apply()
         self._set_solve_state(solve_state)
         self._actions.push(action)
@@ -375,7 +375,7 @@ class SudokuUI(tk.Frame):
 
     def _reset(self):
         self._sudoku.reset()
-        self._set_solve_state("unknown")
+        self._set_solve_state("Unknown")
         self._draw_sudoku()
 
     def _solve(self):
@@ -391,12 +391,12 @@ class SudokuUI(tk.Frame):
 
     def _undo(self):
         self._actions.undo()
-        self._set_solve_state("unknown")
+        self._set_solve_state("Unknown")
         self._draw_sudoku()
 
     def _redo(self):
         self._actions.redo()
-        self._set_solve_state("unknown")
+        self._set_solve_state("Unknown")
         self._draw_sudoku()
 
 

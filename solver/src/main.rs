@@ -5,6 +5,7 @@ mod constraint;
 
 use std::rc::Rc;
 use std::collections::HashMap;
+use std::time::Instant;
 
 use types::*;
 use constraint::*;
@@ -86,7 +87,10 @@ fn main() {
     };
 
     let mut puzzle = Puzzle{ domains, constraints };
+
+    let now = Instant::now();
     let result = puzzle.solve(&mut tracker);
+    let elapsed = now.elapsed();
 
     let result_str = match result {
         Result::Stuck => "stuck",
@@ -105,6 +109,7 @@ fn main() {
     let output = json!({
         "result" : json!(result_str),
         "domains" : json!(domains),
+        "duration_ms" : json!(elapsed.as_millis()),
     });
 
     serde_json::to_writer(std::io::stdout(), &output).ok();

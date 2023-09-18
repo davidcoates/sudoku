@@ -110,11 +110,12 @@ class Sudoku(object):
             text=True,
         ))
         result = solver_output["result"]
+        duration_ms = solver_output["duration_ms"]
         board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
         for variable, domain in solver_output["domains"].items():
             if len(domain) == 1:
                 [r, c] = variable.split(':')
                 r, c = int(r) - 1, int(c) - 1
                 board[r][c] = domain[0]
-        return (result, board)
+        return (f"{result.title()} ({duration_ms}ms)", board)
 
