@@ -101,11 +101,15 @@ class Sudoku(object):
             "domains": domains,
             "constraints": constraints,
         }
-        solver_output = json.loads(subprocess.check_output(
+        pipe = subprocess.run(
             ["./solver/target/debug/solver"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             input=json.dumps(solver_input),
-            text=True,
-        ))
+            encoding="ascii")
+
+        breadcrumbs = pipe.stderr
+        solver_output = json.loads(pipe.stdout)
         result = solver_output["result"]
         duration_ms = solver_output["duration_ms"]
         board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
@@ -114,5 +118,5 @@ class Sudoku(object):
                 [r, c] = variable.split(':')
                 r, c = int(r) - 1, int(c) - 1
                 board[r][c] = domain[0]
-        return (f"{result.title()} ({duration_ms}ms)", board)
+        return (f"{result.title()} ({duration_ms}ms)", board, breadcrumbs)
 
