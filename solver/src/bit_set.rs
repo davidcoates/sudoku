@@ -23,11 +23,6 @@ impl BitSet {
         }
     }
 
-    /*
-    pub fn bits(&self) -> u128 {
-        return self.bits;
-    }
-    */
     pub fn range(min: usize, max: usize) -> Self {
         if min > max || max >= 128 {
             panic!("range({}, {}) invalid", min, max);
