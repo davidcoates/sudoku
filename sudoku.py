@@ -59,13 +59,13 @@ class Sudoku(object):
 
         constraints = []
 
-        def permutation(coordinates, comment):
+        def permutation(coordinates, description):
             variables = [ f"{r+1}:{c+1}" for (r, c) in coordinates ]
             return {
                 "type": "Permutation",
                 "variables": variables,
                 "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-                "comment": comment
+                "description": description
             }
         for r in range(9):
             constraints.append(permutation(
@@ -89,7 +89,7 @@ class Sudoku(object):
             return {
                 "type": "Increasing",
                 "variables": variables,
-                "comment": "thermometer"
+                "description": "thermometer"
             }
         for constraint in self.constraints:
             if isinstance(constraint, Thermo):

@@ -3,6 +3,13 @@ use std::rc::Rc;
 use crate::types::*;
 use crate::bit_set::*;
 
+pub trait Tracker {
+
+    fn variable_description(&self) -> String;
+
+    fn on_progress(&mut self, comment: String);
+}
+
 pub enum Result {
     Unsolvable,
     Solved,
@@ -10,11 +17,15 @@ pub enum Result {
     Progress(Vec<BoxedConstraint>)
 }
 
+pub type ConstraintID = usize;
+
 pub trait Constraint {
 
     fn variables(&self) -> &Variables;
 
-    fn simplify(&self, domains: &mut Domains) -> Result;
+    fn simplify(&self, domains: &mut Domains, tracker: &mut Tracker) -> Result;
+
+    fn description(&self) -> String;
 }
 
 pub type Constraints = Vec<BoxedConstraint>;
@@ -62,9 +73,7 @@ impl BoxedConstraint {
 fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains) -> Result {
     match constraint.simplify(domains) {
         Result::Stuck => {
-            let mut tmp = Vec::new();
-            tmp.push(constraint);
-            return Result::Progress(tmp);
+            return Result::Progress(vec![constraint]);
         },
         r => r
     }
@@ -96,17 +105,19 @@ fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains) -> Resu
 // Distinct digits covering a domain
 #[derive(Clone,Copy)]
 pub struct Permutation {
+    description: String,
     variables: Variables,
     domain: Domain,
 }
 
 impl Permutation {
 
-    pub fn new(variables: Variables, domain: Domain) -> Self {
+    pub fn new(description: String, variables: Variables, domain: Domain) -> Self {
         if variables.len() != domain.len() {
             panic!("bad Permutation: #variables != #domain")
         }
         return Permutation {
+            description,
             variables,
             domain
         };
@@ -133,10 +144,22 @@ impl Constraint for Permutation {
     fn simplify(&self, domains: &mut Domains) -> Result {
 
         let mut progress = false;
+        let mut breadcrumbs = Breadcrumbs::new();
 
         // Firstly, intersect against this constraint's domain
         for variable in self.variables.iter() {
-            progress |= intersect_with(variable, domains, self.domain);
+            let new = domains.get_mut(variable).unwrap();
+            let old = *new;
+            new.intersect_with(self.domain);
+            if *new != old {
+                progress = true;
+                breadcrumbs.push(Breadcrumb{
+                    constraint_id: self.id(),
+                    variable: variable,
+                    domain_from: old,
+                    domain_to: *new,
+                });
+            }
         }
 
         // Solve based on the following idea:
@@ -160,8 +183,8 @@ impl Constraint for Permutation {
             }
             if union.len() == selection.len() {
                 let selection_complement = self.variables.difference(selection);
-                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(selection, union)));
-                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(selection_complement, self.domain.difference(union))));
+                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection, union)));
+                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection_complement, self.domain.difference(union))));
                 return join(c1, c2, domains);
             }
         }
@@ -199,17 +222,15 @@ impl Constraint for Permutation {
                     }
                 }
                 if ok {
-                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(selection, intersection)));
-                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(selection_complement, self.domain.difference(intersection))));
+                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection, intersection)));
+                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection_complement, self.domain.difference(intersection))));
                     return join(c1, c2, domains);
                 }
             }
         }
 
         if progress {
-            let mut tmp = Vec::new();
-            tmp.push(BoxedConstraint::new(Rc::new(*self)));
-            return Result::Progress(tmp);
+            return Result::Progress(vec![BoxedConstraint::new(Rc::new(*self))]);
         } else {
             return Result::Stuck;
         }
@@ -218,19 +239,25 @@ impl Constraint for Permutation {
     fn variables(&self) -> &Variables {
         &self.variables
     }
+
+    fn id(&self) -> ConstraintID {
+        return self.id;
+    }
 }
 
 
 // Strictly increasing digits
 #[derive(Clone,Copy)]
 pub struct Increasing {
+    description: String,
     variables: Variables,
 }
 
 impl Increasing {
 
-    pub fn new(variables: Variables) -> Self {
+    pub fn new(description: String, variables: Variables) -> Self {
         return Increasing {
+            description,
             variables,
         };
     }
@@ -242,13 +269,25 @@ impl Constraint for Increasing {
     fn simplify(&self, domains: &mut Domains) -> Result {
 
         let mut progress = false;
+        let mut breadcrumbs = Breadcrumbs::new();
 
         // Restrict small values
         let mut min : Option<usize> = None;
         for variable in self.variables.iter() {
             match min {
                 Some(n) => {
-                    progress |= difference_with(variable, domains, Domain::range(0, n));
+                    let new = domains.get_mut(variable).unwrap();
+                    let old = *new;
+                    new.difference_with(Domain::range(0, n));
+                    if *new != old {
+                        progress = true;
+                        breadcrumbs.push(Breadcrumb{
+                            constraint_id: self.id(),
+                            variable: variable,
+                            domain_from: old,
+                            domain_to: *new,
+                        });
+                    }
                 }
                 _ => {}
             }
@@ -261,7 +300,18 @@ impl Constraint for Increasing {
         for variable in self.variables.iter().rev() {
             match max {
                 Some(n) => {
-                    progress |= intersect_with(variable, domains, Domain::range(0, n - 1));
+                    let new = domains.get_mut(variable).unwrap();
+                    let old = *new;
+                    new.intersect_with(Domain::range(0, n - 1));
+                    if *new != old {
+                        progress = true;
+                        breadcrumbs.push(Breadcrumb{
+                            constraint_id: self.id(),
+                            variable: variable,
+                            domain_from: old,
+                            domain_to: *new,
+                        });
+                    }
                 }
                 _ => {}
             }
@@ -270,9 +320,7 @@ impl Constraint for Increasing {
         }
 */
         if progress {
-            let mut tmp = Vec::new();
-            tmp.push(BoxedConstraint::new(Rc::new(*self)));
-            return Result::Progress(tmp);
+            return Result::Progress(vec![BoxedConstraint::new(Rc::new(*self))]);
         } else {
             return Result::Stuck;
         }
@@ -280,5 +328,9 @@ impl Constraint for Increasing {
 
     fn variables(&self) -> &Variables {
         &self.variables
+    }
+
+    fn id(&self) -> ConstraintID {
+        return self.id;
     }
 }

@@ -35,6 +35,7 @@ fn main() {
 
     let mut constraints = Constraints::new();
     for constraint in input["constraints"].as_array().unwrap() {
+        let description = constraints["description"].as_str().unwrap();
         match constraint["type"].as_str().unwrap() {
             "Permutation" => {
                 let mut variables = BitSet::new();
@@ -48,7 +49,7 @@ fn main() {
                     domain.insert(usize::try_from(digit.as_u64().unwrap()).unwrap());
                 }
 
-                constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(variables, domain))));
+                constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(description, variables, domain))));
             }
             "Increasing" => {
                 let mut variables = BitSet::new();
@@ -57,7 +58,7 @@ fn main() {
                     variables.insert(variable_to_index[variable]);
                 }
 
-                constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(variables))));
+                constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(description, variables))));
             }
             _ => panic!("unknown type"),
         }
