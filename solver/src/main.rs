@@ -1,12 +1,12 @@
 mod bit_set;
 mod solver;
-mod domain;
+mod types;
 mod constraint;
 
 use std::rc::Rc;
 use std::collections::HashMap;
 
-use domain::*;
+use types::*;
 use constraint::*;
 use bit_set::*;
 use solver::*;
@@ -77,7 +77,7 @@ fn main() {
     let mut domains: HashMap<String, serde_json::Value> = HashMap::new();
     for (index, domain) in puzzle.domains.iter().enumerate() {
         let variable = index_to_variable[index];
-        let domain = domain.bit_set().iter().map(|x| json!(x)).collect::<Vec<serde_json::Value>>();
+        let domain = domain.iter().map(|x| json!(x)).collect::<Vec<serde_json::Value>>();
         domains.insert(variable.to_string(), json!(domain));
     }
 

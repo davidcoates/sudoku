@@ -28,6 +28,13 @@ impl BitSet {
         return self.bits;
     }
     */
+    pub fn range(min: usize, max: usize) -> Self {
+        if min > max || max >= 128 {
+            panic!("range({}, {}) invalid", min, max);
+        }
+        let bits = ((1 << (max + 1)) - 1) & !((1 << (min + 1)) - 1);
+        return BitSet::from_bits(bits);
+    }
 
     pub fn all() -> Self {
         BitSet{
@@ -47,20 +54,6 @@ impl BitSet {
         return self.iter().rev().next().unwrap();
     }
 
-/*
-    pub fn combinations(&self) -> Vec<BitSetIter> {
-        let mut ret = Vec::new();
-        let values: Vec<usize> = self.iter().collect();
-        for key in 0..u128::pow(2, values.len() as u32) {
-            let mut bits: u128 = 0;
-            for i in (BitSetIter { bits: key }) {
-                bits |= 1 << values.get(i).unwrap();
-            }
-            ret.push(BitSetIter{ bits: bits });
-        }
-        return ret;
-    }
-*/
     pub fn empty(&self) -> bool { self.bits == 0 }
 
     pub fn len(&self) -> usize { self.bits.count_ones() as usize }

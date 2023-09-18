@@ -1,4 +1,4 @@
-use crate::domain::*;
+use crate::types::*;
 use crate::constraint::*;
 
 pub struct Puzzle {

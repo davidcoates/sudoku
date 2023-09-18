@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::domain::*;
+use crate::types::*;
 use crate::bit_set::*;
 
 pub enum Result {
@@ -12,7 +12,7 @@ pub enum Result {
 
 pub trait Constraint {
 
-    fn variables(&self) -> &BitSet;
+    fn variables(&self) -> &Variables;
 
     fn simplify(&self, domains: &mut Domains) -> Result;
 }
@@ -41,9 +41,9 @@ impl BoxedConstraint {
     fn check(&self, domains: &mut Domains) -> Option<Result> {
         let mut all_solved = true;
         for variable in self.unbox().variables().iter() {
-            if domains.get(variable).unwrap().unsolvable() {
-                return Some(Result::Solved); // FIXME
-            } else if !domains.get(variable).unwrap().solved() {
+            if domains.get(variable).unwrap().len() == 0 {
+                return Some(Result::Unsolvable);
+            } else if domains.get(variable).unwrap().len() != 1 {
                 all_solved = false;
             }
         }
@@ -96,13 +96,13 @@ fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains) -> Resu
 // Distinct digits covering a domain
 #[derive(Clone,Copy)]
 pub struct Permutation {
-    variables: BitSet,
+    variables: Variables,
     domain: Domain,
 }
 
 impl Permutation {
 
-    pub fn new(variables: BitSet, domain: Domain) -> Self {
+    pub fn new(variables: Variables, domain: Domain) -> Self {
         if variables.len() != domain.len() {
             panic!("bad Permutation: #variables != #domain")
         }
@@ -114,6 +114,20 @@ impl Permutation {
 
 }
 
+fn intersect_with(variable: Variable, domains: &mut Domains, domain: Domain) -> bool {
+    let new = domains.get_mut(variable).unwrap();
+    let old = *new;
+    new.intersect_with(domain);
+    return *new != old;
+}
+
+fn difference_with(variable: Variable, domains: &mut Domains, domain: Domain) -> bool {
+    let new = domains.get_mut(variable).unwrap();
+    let old = *new;
+    new.difference_with(domain);
+    return *new != old;
+}
+
 impl Constraint for Permutation {
 
     fn simplify(&self, domains: &mut Domains) -> Result {
@@ -122,7 +136,7 @@ impl Constraint for Permutation {
 
         // Firstly, intersect against this constraint's domain
         for variable in self.variables.iter() {
-            progress |= domains.get_mut(variable).unwrap().intersect_with(self.domain);
+            progress |= intersect_with(variable, domains, self.domain);
         }
 
         // Solve based on the following idea:
@@ -168,9 +182,9 @@ impl Constraint for Permutation {
 
         let values: Vec<usize> = self.variables.iter().collect();
         for combination in 1..(u128::pow(2, values.len() as u32) - 1) {
-            let mut selection = BitSet::new();
+            let mut selection = Domain::new();
             let mut intersection = Domain::all();
-            for i in BitSet::from_bits(combination).iter() {
+            for i in Domain::from_bits(combination).iter() {
                 let variable = *values.get(i).unwrap();
                 selection.insert(variable);
                 intersection.intersect_with(*domains.get(variable).unwrap());
@@ -179,7 +193,7 @@ impl Constraint for Permutation {
                 let mut ok = true;
                 let selection_complement = self.variables.difference(selection);
                 for variable in selection_complement.iter() {
-                    if !domains.get(variable).unwrap().bit_set().intersection(intersection.bit_set()).empty() {
+                    if !domains.get(variable).unwrap().intersection(intersection).empty() {
                         ok = false;
                         break;
                     }
@@ -201,7 +215,7 @@ impl Constraint for Permutation {
         }
     }
 
-    fn variables(&self) -> &BitSet {
+    fn variables(&self) -> &Variables {
         &self.variables
     }
 }
@@ -210,12 +224,12 @@ impl Constraint for Permutation {
 // Strictly increasing digits
 #[derive(Clone,Copy)]
 pub struct Increasing {
-    variables: BitSet,
+    variables: Variables,
 }
 
 impl Increasing {
 
-    pub fn new(variables: BitSet) -> Self {
+    pub fn new(variables: Variables) -> Self {
         return Increasing {
             variables,
         };
@@ -234,7 +248,7 @@ impl Constraint for Increasing {
         for variable in self.variables.iter() {
             match min {
                 Some(n) => {
-                    progress |= domains.get_mut(variable).unwrap().difference_with(Domain::range(0, n));
+                    progress |= difference_with(variable, domains, Domain::range(0, n));
                 }
                 _ => {}
             }
@@ -247,7 +261,7 @@ impl Constraint for Increasing {
         for variable in self.variables.iter().rev() {
             match max {
                 Some(n) => {
-                    progress |= domains.get_mut(variable).unwrap().intersect_with(Domain::range(0, n - 1));
+                    progress |= intersect_with(variable, domains, Domain::range(0, n - 1));
                 }
                 _ => {}
             }
@@ -264,7 +278,7 @@ impl Constraint for Increasing {
         }
     }
 
-    fn variables(&self) -> &BitSet {
+    fn variables(&self) -> &Variables {
         &self.variables
     }
 }
