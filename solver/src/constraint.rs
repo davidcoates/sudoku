@@ -123,22 +123,6 @@ impl Permutation {
 
 }
 
-/*
-fn intersect_with(variable: Variable, domains: &mut Domains, domain: Domain) -> bool {
-    let new = domains.get_mut(variable).unwrap();
-    let old = *new;
-    new.intersect_with(domain);
-    return *new != old;
-}
-
-fn difference_with(variable: Variable, domains: &mut Domains, domain: Domain) -> bool {
-    let new = domains.get_mut(variable).unwrap();
-    let old = *new;
-    new.difference_with(domain);
-    return *new != old;
-}
-*/
-
 impl Constraint for Permutation {
 
     fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
@@ -152,7 +136,7 @@ impl Constraint for Permutation {
             new.intersect_with(self.domain);
             if *new != old {
                 progress = true;
-                tracker.on_progress(format!("variable({}) domain({} -> {}) {}", tracker.variable_name(variable), old, *new, self.description));
+                tracker.on_progress(format!("{} is not {} since {}", tracker.variable_name(variable), old.difference(*new), self.description));
             }
         }
 
@@ -176,10 +160,19 @@ impl Constraint for Permutation {
                 union.union_with(*domains.get(variable).unwrap());
             }
             if union.len() == selection.len() {
+                let reason1 = if union.len() == 1 {
+                    format!("{}", self.description)
+                } else {
+                    format!("is inside {} tuple", union)
+                };
+                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason1, selection, union)));
                 let selection_complement = self.variables.difference(selection);
-                let reason = format!("supercover({}) from {}", union, self.description);
-                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason.to_string(), selection, union)));
-                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason, selection_complement, self.domain.difference(union))));
+                let reason2 = if union.len() == 1 {
+                    format!("{}", self.description)
+                } else {
+                    format!("is outside {} tuple", union)
+                };
+                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(union))));
                 return join(c1, c2, domains, tracker);
             }
         }
@@ -217,9 +210,10 @@ impl Constraint for Permutation {
                     }
                 }
                 if ok {
-                    let reason = format!("subcover({}) from {}", intersection, self.description);
-                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason.to_string(), selection, intersection)));
-                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason, selection_complement, self.domain.difference(intersection))));
+                    let reason1 = format!("inside {} disguised tuple", intersection);
+                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason1, selection, intersection)));
+                    let reason2 = format!("outside {} disguised tuple", intersection);
+                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(intersection))));
                     return join(c1, c2, domains, tracker);
                 }
             }
@@ -282,7 +276,7 @@ impl Constraint for Increasing {
                     new.difference_with(Domain::range(0, n));
                     if *new != old {
                         progress = true;
-                        tracker.on_progress(format!("variable({}) domain({} -> {}) min-push {}", tracker.variable_name(*variable), old, *new, self.description));
+                        tracker.on_progress(format!("{} is not {} considering increasing min of {}", tracker.variable_name(*variable), old.difference(*new), self.description));
                     }
                 }
                 _ => {}
@@ -301,7 +295,7 @@ impl Constraint for Increasing {
                     new.intersect_with(Domain::range(0, n - 1));
                     if *new != old {
                         progress = true;
-                        tracker.on_progress(format!("variable({}) domain({} -> {}) max-pull {}", tracker.variable_name(*variable), old, *new, self.description));
+                        tracker.on_progress(format!("{} is not {} considering decreasing max of {}", tracker.variable_name(*variable), old.difference(*new), self.description));
                     }
                 }
                 _ => {}

@@ -90,7 +90,11 @@ impl BitSet {
 impl fmt::Display for BitSet {
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        return write!(f, "[{}]",  self.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","));
+        if self.len() == 1 {
+            return write!(f, "{}", self.iter().next().unwrap());
+        } else {
+            return write!(f, "{}",  self.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","));
+        }
     }
 
 }

@@ -101,9 +101,6 @@ class Sudoku(object):
             "domains": domains,
             "constraints": constraints,
         }
-        print(domains)
-        for constraint in constraints:
-            print(constraint)
         solver_output = json.loads(subprocess.check_output(
             ["./solver/target/debug/solver"],
             input=json.dumps(solver_input),
