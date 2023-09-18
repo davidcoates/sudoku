@@ -369,7 +369,7 @@ class SudokuUI(tk.Frame):
 
     def _apply(self, action, solve_state=None):
         action.apply()
-        self._set_solve_state(solve_state if solve_state else "Unknown")
+        self._set_solve_state(solve_state)
         self._actions.push(action)
         self._draw_sudoku()
 
