@@ -79,15 +79,27 @@ class DigitAction(Action):
 
 class ConstraintAction(Action):
 
-    def __init__(self, sudoku, thermo):
+    def __init__(self, sudoku, constraint):
         self._sudoku = sudoku
-        self._thermo = thermo
+        self._constraint = constraint
 
     def apply(self):
-        self._sudoku.constraints.append(self._thermo)
+        self._sudoku.constraints.append(self._constraint)
 
     def undo(self):
-        self._sudoku.constraints.pop()
+        self._sudoku.constraints.remove(self._constraint)
+
+
+class ReverseAction(Action):
+
+    def __init__(self, action):
+        self._action = action
+
+    def apply(self):
+        self._action.undo()
+
+    def undo(self):
+        self._action.apply()
 
 
 class EditMode(Enum):

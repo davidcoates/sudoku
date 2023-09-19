@@ -15,11 +15,7 @@ class SudokuError(Exception):
 
 @dataclass
 class Thermo:
-    _path: list[(int, int)]
-
-    @property
-    def path(self):
-        return self._path
+    path: list[(int, int)]
 
 
 class Sudoku(object):
