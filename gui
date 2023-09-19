@@ -248,10 +248,11 @@ class SudokuUI(tk.Frame):
         self._canvas.delete("numbers")
         self._canvas.delete("constraints")
         for constraint in self._sudoku.constraints:
-            if isinstance(constraint, Thermo):
-                self._draw_thermo(constraint.path)
-            else:
-                assert(False)
+            match constraint:
+                case Thermo(path):
+                    self._draw_thermo(path)
+                case _:
+                    assert(False)
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)

@@ -3,6 +3,8 @@ import subprocess
 import pickle
 import json
 import lzstring
+from dataclasses import dataclass
+from typing import *
 
 class SudokuError(Exception):
     """
@@ -11,15 +13,13 @@ class SudokuError(Exception):
     pass
 
 
-class Thermo():
-
-    def __init__(self, path):
-        self._path = path
+@dataclass
+class Thermo:
+    _path: list[(int, int)]
 
     @property
     def path(self):
         return self._path
-
 
 
 class Sudoku(object):
@@ -41,10 +41,11 @@ class Sudoku(object):
                 if digit is not None:
                     js["grid"][r][c] = { "value": digit, "given": True }
         for constraint in self.constraints:
-            if isinstance(constraint, Thermo):
-                js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in constraint.path ]]})
-            else:
-                assert(False)
+            match constraint:
+                case Thermo(path):
+                    js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in constraint.path ]]})
+                case _:
+                    assert(False)
         return json.dumps(js)
 
     def to_url(self):
@@ -117,10 +118,11 @@ class Sudoku(object):
                 "description": "thermometer"
             }
         for constraint in self.constraints:
-            if isinstance(constraint, Thermo):
-                constraints.append(thermo(constraint))
-            else:
-                assert(False)
+            match constraint:
+                case Thermo():
+                    constraints.append(thermo(constraint))
+                case _:
+                    assert(False)
 
         solver_input = {
             "domains": domains,
