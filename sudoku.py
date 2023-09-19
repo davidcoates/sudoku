@@ -27,7 +27,7 @@ class Sudoku(object):
 
     def to_json(self):
         js = {
-            "title": self._sudoku_name.title(),
+            "title": self._sudoku_name,
             "author": "Dave",
             "size": 9,
             "grid": [ [ dict() for c in range(9) ] for r in range(9) ],
