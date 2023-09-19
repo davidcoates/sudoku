@@ -1,6 +1,8 @@
 import json
 import subprocess
 import pickle
+import json
+import lzstring
 
 class SudokuError(Exception):
     """
@@ -28,6 +30,26 @@ class Sudoku(object):
         self._sudoku_filename = sudoku_filename
         self.reset()
 
+    def to_json(self):
+        js = {
+            "size": 9,
+            "grid": [ [ dict() for c in range(9) ] for r in range(9) ],
+            "thermometer": []
+        }
+        for r, row in enumerate(self._board):
+            for c, digit in enumerate(row):
+                if digit is not None:
+                    js["grid"][r][c] = { "value": digit, "given": True }
+        for constraint in self.constraints:
+            if isinstance(constraint, Thermo):
+                js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in constraint.path ]]})
+            else:
+                assert(False)
+        return json.dumps(js)
+
+    def to_url(self):
+        return "https://f-puzzles.com/?load=" + lzstring.LZString().compressToBase64(self.to_json())
+
     def save(self):
         with open(self._sudoku_filename, 'wb') as sudoku_file:
             data = (self._board, self.constraints)
@@ -48,6 +70,9 @@ class Sudoku(object):
         return self._board[r][c]
 
     def solve(self):
+
+        print(self.to_url())
+
         domains = {}
         for r in range(9):
             for c in range(9):
