@@ -17,7 +17,7 @@ INLAY_COLOR = "linen"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
 THERMO_COLOR = "light grey"
-THERMO_PENDING_COLOR = "red"
+THERMO_PENDING_COLOR = "dark grey"
 CURSOR_COLOR = "red"
 
 
@@ -410,8 +410,7 @@ class SudokuUI(tk.Frame):
 
 if __name__ == '__main__':
     sudoku_name = parse_arguments()
-    sudoku_filename = f"sudokus/{sudoku_name}.sudoku"
-    sudoku = Sudoku(sudoku_filename)
+    sudoku = Sudoku(sudoku_name)
 
     root = tk.Tk()
     SudokuUI(root, sudoku)

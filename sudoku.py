@@ -20,12 +20,15 @@ class Sudoku(object):
     """
     Sudoku Puzzle representation
     """
-    def __init__(self, sudoku_filename):
-        self._sudoku_filename = sudoku_filename
+    def __init__(self, sudoku_name):
+        self._sudoku_name = sudoku_name
+        self._sudoku_filename = f"sudokus/{sudoku_name}.sudoku"
         self.reset()
 
     def to_json(self):
         js = {
+            "title": self._sudoku_name.title(),
+            "author": "Dave",
             "size": 9,
             "grid": [ [ dict() for c in range(9) ] for r in range(9) ],
             "thermometer": []
@@ -39,7 +42,7 @@ class Sudoku(object):
         return json.dumps(js)
 
     def to_url(self):
-        return "https://f-puzzles.com/?load=" + lzstring.LZString().compressToBase64(self.to_json())
+        return "https://app.crackingthecryptic.com/sudoku/?puzzleid=fpuzzles" + lzstring.LZString().compressToBase64(self.to_json())
 
     def save(self):
         with open(self._sudoku_filename, 'wb') as sudoku_file:
