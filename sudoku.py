@@ -3,19 +3,17 @@ import subprocess
 import pickle
 import json
 import lzstring
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import *
 
-class SudokuError(Exception):
-    """
-    An application specific error.
-    """
-    pass
+@dataclass
+class Thermometer:
+    path: list[(int, int)]
 
 
 @dataclass
-class Thermo:
-    path: list[(int, int)]
+class Constraints:
+    thermometers: list[Thermometer] = field(default_factory=list)
 
 
 class Sudoku(object):
@@ -36,12 +34,8 @@ class Sudoku(object):
             for c, digit in enumerate(row):
                 if digit is not None:
                     js["grid"][r][c] = { "value": digit, "given": True }
-        for constraint in self.constraints:
-            match constraint:
-                case Thermo(path):
-                    js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in constraint.path ]]})
-                case _:
-                    assert(False)
+        for thermo in self._constraints.thermometers:
+            js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in thermo.path ]]})
         return json.dumps(js)
 
     def to_url(self):
@@ -49,22 +43,26 @@ class Sudoku(object):
 
     def save(self):
         with open(self._sudoku_filename, 'wb') as sudoku_file:
-            data = (self._board, self.constraints)
+            data = (self._board, self._constraints)
             pickle.dump(data, sudoku_file)
 
     def reset(self):
         try:
             with open(self._sudoku_filename, 'rb') as sudoku_file:
-                (self._board, self.constraints) = pickle.load(sudoku_file)
+                (self._board, self._constraints) = pickle.load(sudoku_file)
         except FileNotFoundError:
             self._board = [ [ None for c in range(9) ] for r in range(9) ]
-            self.constraints = []
+            self._constraints = Constraints()
 
     def set(self, r, c, value):
         self._board[r][c] = value
 
     def get(self, r, c):
         return self._board[r][c]
+
+    @property
+    def constraints(self):
+        return self._constraints
 
     def solve(self):
 
@@ -106,19 +104,13 @@ class Sudoku(object):
                     f"sudoku box({r*3 + c + 1})"
                 ))
 
-        def thermo(thermo):
+        for thermo in self._constraints.thermometers:
             variables = [ f"{r+1}:{c+1}" for (r, c) in thermo.path ]
-            return {
+            constraints.append({
                 "type": "Increasing",
                 "variables": variables,
                 "description": "thermometer"
-            }
-        for constraint in self.constraints:
-            match constraint:
-                case Thermo():
-                    constraints.append(thermo(constraint))
-                case _:
-                    assert(False)
+            })
 
         solver_input = {
             "domains": domains,

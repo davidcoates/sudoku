@@ -11,6 +11,16 @@ MARGIN = 20  # Pixels around the board
 SIDE = 80  # Width of every board cell.
 WIDTH = HEIGHT = MARGIN * 2 + SIDE * 9  # Width and height of the whole board
 
+
+BACKGROUND_COLOR = "white smoke"
+INLAY_COLOR = "linen"
+BORDER_COLOR = "black"
+BUTTON_COLOR = "white"
+THERMO_COLOR = "light grey"
+THERMO_PENDING_COLOR = "red"
+CURSOR_COLOR = "red"
+
+
 class Action(ABC):
 
     @abstractmethod
@@ -77,29 +87,21 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
-class ConstraintAction(Action):
+class ThermometerAction(Action):
 
-    def __init__(self, sudoku, constraint):
+    def __init__(self, sudoku, thermo):
         self._sudoku = sudoku
-        self._constraint = constraint
+        self._thermo = thermo
 
     def apply(self):
-        self._sudoku.constraints.append(self._constraint)
+        thermos = self._sudoku.constraints.thermometers
+        if self._thermo in thermos:
+            thermos.remove(self._thermo)
+        else:
+            thermos.append(self._thermo)
 
     def undo(self):
-        self._sudoku.constraints.remove(self._constraint)
-
-
-class ReverseAction(Action):
-
-    def __init__(self, action):
-        self._action = action
-
-    def apply(self):
-        self._action.undo()
-
-    def undo(self):
-        self._action.apply()
+        self.apply()
 
 
 class EditMode(Enum):
@@ -119,12 +121,6 @@ def parse_arguments():
     args = vars(arg_parser.parse_args())
     return args['sudoku']
 
-
-BACKGROUND_COLOR = "white smoke"
-INLAY_COLOR = "linen"
-BORDER_COLOR = "black"
-BUTTON_COLOR = "white"
-THERMO_COLOR = "light grey"
 
 class SudokuUI(tk.Frame):
     """
@@ -259,12 +255,8 @@ class SudokuUI(tk.Frame):
     def _draw_sudoku(self):
         self._canvas.delete("numbers")
         self._canvas.delete("constraints")
-        for constraint in self._sudoku.constraints:
-            match constraint:
-                case Thermo(path):
-                    self._draw_thermo(path)
-                case _:
-                    assert(False)
+        for thermo in self._sudoku.constraints.thermometers:
+            self._draw_thermo(thermo.path, pending=False)
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -286,7 +278,7 @@ class SudokuUI(tk.Frame):
             y1 = MARGIN + (row + 1) * SIDE - 1
             self._canvas.create_rectangle(
                 x0, y0, x1, y1,
-                outline="red", tags="cursor"
+                outline=CURSOR_COLOR, tags="cursor"
             )
 
     def _get_cell(self, event, fuzzy=False):
@@ -323,7 +315,7 @@ class SudokuUI(tk.Frame):
     def _on_mouse_released(self, event):
         if self._thermo is None:
             return
-        self._apply(ConstraintAction(self._sudoku, Thermo(self._thermo)))
+        self._apply(ThermometerAction(self._sudoku, Thermometer(self._thermo)))
         self._thermo = None
 
     def _on_mouse_moved(self, event):
@@ -333,9 +325,10 @@ class SudokuUI(tk.Frame):
         if selection is not None:
             if selection != self._thermo[-1]:
                 self._thermo.append(selection)
-                self._draw_thermo(self._thermo)
+                self._draw_thermo(self._thermo, pending=True)
 
-    def _draw_thermo(self, path):
+    def _draw_thermo(self, path, pending):
+        color = THERMO_PENDING_COLOR if pending else THERMO_COLOR
         last_row, last_col = None, None
         for (row, col) in path:
             if last_row is None:
@@ -345,7 +338,7 @@ class SudokuUI(tk.Frame):
                 y1 = MARGIN + (row + 0.95) * SIDE - 1
                 self._canvas.create_oval(
                     x0, y0, x1, y1,
-                    fill=THERMO_COLOR, outline="", tags="constraints"
+                    fill=color, outline="", tags="constraints"
                 )
             else:
                 x0 = MARGIN + (last_col + 0.5) * SIDE + 1
@@ -354,7 +347,7 @@ class SudokuUI(tk.Frame):
                 y1 = MARGIN + (     row + 0.5) * SIDE + 1
                 self._canvas.create_line(
                     x0, y0, x1, y1,
-                    fill=THERMO_COLOR, width=20, capstyle=tk.ROUND, tags="constraints"
+                    fill=color, width=20, capstyle=tk.ROUND, tags="constraints"
                 )
             last_row, last_col = row, col
 
