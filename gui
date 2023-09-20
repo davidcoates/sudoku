@@ -463,9 +463,11 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
 
     def _solve(self):
-        (solve_state, board, breadcrumbs) = self._sudoku.solve()
-        # TODO show this in the GUI...
-        print(breadcrumbs)
+        (solve_state, board) = self._sudoku.solve()
+        # TODO show breadcrumbs in gui
+        if board is None:
+            self._set_solve_state(solve_state)
+            return
         action = MultiAction()
         for r, row in enumerate(board):
             for c, digit in enumerate(row):

@@ -161,12 +161,17 @@ class Sudoku(object):
             "domains": domains,
             "constraints": constraints,
         }
-        pipe = subprocess.run(
-            ["./solver/target/debug/solver"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            input=json.dumps(solver_input),
-            encoding="ascii")
+
+        try:
+            pipe = subprocess.run(
+                ["./solver/target/debug/solver"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                input=json.dumps(solver_input),
+                encoding="ascii",
+                timeout=3)
+        except subprocess.TimeoutExpired:
+            return ("Timed Out", None)
 
         breadcrumbs = pipe.stderr
         solver_output = json.loads(pipe.stdout)
@@ -178,5 +183,5 @@ class Sudoku(object):
                 [r, c] = variable.split(':')
                 r, c = int(r) - 1, int(c) - 1
                 board[r][c] = domain[0]
-        return (f"{result.title()} ({duration_ms}ms)", board, breadcrumbs)
+        return (f"{result.title()} ({duration_ms}ms)", board)
 
