@@ -17,6 +17,7 @@ INLAY_COLOR = "linen"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
 CURSOR_COLOR = "red"
+LABEL_FONT = ("Courier New", 10)
 
 class Line():
 
@@ -203,8 +204,14 @@ class SudokuUI(tk.Frame):
         right_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH)
 
-        edit_panel = tk.Frame(master=right_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        edit_panel.pack(side=tk.LEFT)
+        edit_config_panel = tk.Frame(master=right_panel, background=BACKGROUND_COLOR)
+        edit_config_panel.pack(side=tk.LEFT)
+
+        edit_panel = tk.Frame(master=edit_config_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        edit_panel.pack(side=tk.TOP, pady=10)
+
+        config_panel = tk.Frame(master=edit_config_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        config_panel.pack(side=tk.BOTTOM, pady=10)
 
         self._canvas = tk.Canvas(left_panel,
                                  width=WIDTH,
@@ -241,12 +248,34 @@ class SudokuUI(tk.Frame):
                                     padx=5,
                                     pady=5,
                                     fg="black",
-                                    font=("Courier New", 10))
+                                    font=LABEL_FONT)
             if em == EditMode.DIGIT:
                 option.select()
                 on_edit_mode_changed()
             option.pack(anchor=tk.W)
 
+
+        # Config panel
+        self._branch = tk.BooleanVar()
+        branch_check = tk.Checkbutton(config_panel,
+                                      text="Branch",
+                                      variable=self._branch,
+                                      onvalue=True,
+                                      offvalue=False,
+                                      background=INLAY_COLOR,
+                                      fg="black",
+                                      font=LABEL_FONT)
+        branch_check.pack()
+        self._unique = tk.BooleanVar()
+        unique_check = tk.Checkbutton(config_panel,
+                                      text="Unique",
+                                      variable=self._unique,
+                                      onvalue=True,
+                                      offvalue=False,
+                                      background=INLAY_COLOR,
+                                      fg="black",
+                                      font=LABEL_FONT)
+        unique_check.pack()
 
         # Control panel
         self._control_images = []
@@ -463,7 +492,7 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
 
     def _solve(self):
-        (solve_state, board) = self._sudoku.solve()
+        (solve_state, board) = self._sudoku.solve(self._branch.get(), self._unique.get())
         # TODO show breadcrumbs in gui
         if board is None:
             self._set_solve_state(solve_state)

@@ -13,11 +13,11 @@ use solver::*;
 
 use serde_json::json;
 
-struct TrackerImpl {
+struct ReporterImpl {
     variable_index_to_name: Vec<String>,
 }
 
-impl Tracker for TrackerImpl {
+impl Reporter for ReporterImpl {
 
     fn variable_name(&self, variable: Variable) -> &String {
         return &self.variable_index_to_name[variable];
@@ -89,14 +89,19 @@ fn main() {
 
     }
 
-    let mut tracker = TrackerImpl{
+    let mut reporter = ReporterImpl{
         variable_index_to_name: variable_index_to_name,
+    };
+
+    let config = Config{
+        branch: input["branch"].as_bool().unwrap(),
+        unique: input["unique"].as_bool().unwrap(),
     };
 
     let mut puzzle = Puzzle{ domains, constraints };
 
     let now = Instant::now();
-    let result = puzzle.solve(&mut tracker);
+    let result = puzzle.solve(&mut reporter, config);
     let elapsed = now.elapsed();
 
     let result_str = match result {
@@ -108,7 +113,7 @@ fn main() {
 
     let mut domains: HashMap<String, serde_json::Value> = HashMap::new();
     for (index, domain) in puzzle.domains.iter().enumerate() {
-        let variable = &tracker.variable_index_to_name[index];
+        let variable = &reporter.variable_index_to_name[index];
         let domain = domain.iter().map(|x| json!(x)).collect::<Vec<serde_json::Value>>();
         domains.insert(variable.to_string(), json!(domain));
     }

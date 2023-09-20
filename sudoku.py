@@ -99,7 +99,7 @@ class Sudoku(object):
     def constraints(self):
         return self._constraints
 
-    def solve(self):
+    def solve(self, branch, unique):
 
         print(self.to_url())
 
@@ -160,6 +160,8 @@ class Sudoku(object):
         solver_input = {
             "domains": domains,
             "constraints": constraints,
+            "branch": branch,
+            "unique": unique,
         }
 
         try:

@@ -3,13 +3,6 @@ use std::rc::Rc;
 use crate::types::*;
 use crate::bit_set::*;
 
-pub trait Tracker {
-
-    fn variable_name(&self, variable: Variable) -> &String;
-
-    fn on_progress(&mut self, comment: String);
-}
-
 pub enum Result {
     Unsolvable,
     Solved,
@@ -21,7 +14,7 @@ pub trait Constraint {
 
     fn variables(&self) -> &VariableSet;
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result;
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result;
 
     fn description(&self) -> &String;
 }
@@ -59,17 +52,17 @@ impl BoxedConstraint {
         return if all_solved { Some(Result::Solved) } else { None };
     }
 
-    pub fn simplify(&self, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
+    pub fn simplify(&self, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
         match self.check(domains) {
             Some(result) => result,
-            None => self.constraint.clone().simplify(domains, tracker),
+            None => self.constraint.clone().simplify(domains, reporter),
         }
     }
 
 }
 
-fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
-    match constraint.simplify(domains, tracker) {
+fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    match constraint.simplify(domains, reporter) {
         Result::Stuck => {
             return Result::Progress(vec![constraint]);
         },
@@ -77,9 +70,9 @@ fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, tracker
     }
 }
 
-fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
-    let mut r1 = progress_simplify(c1, domains, tracker);
-    let mut r2 = progress_simplify(c2, domains, tracker);
+fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    let mut r1 = progress_simplify(c1, domains, reporter);
+    let mut r2 = progress_simplify(c2, domains, reporter);
     match (&r1, &r2) {
         (Result::Unsolvable, _)       => Result::Unsolvable,
         (_, Result::Unsolvable)       => Result::Unsolvable,
@@ -125,7 +118,7 @@ impl Permutation {
 
 impl Constraint for Permutation {
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
         let mut progress = false;
 
@@ -136,7 +129,7 @@ impl Constraint for Permutation {
             new.intersect_with(self.domain);
             if *new != old {
                 progress = true;
-                tracker.on_progress(format!("{} is not {} since {}", tracker.variable_name(variable), old.difference(*new), self.description));
+                reporter.on_progress(format!("{} is not {} since {}", reporter.variable_name(variable), old.difference(*new), self.description));
             }
         }
 
@@ -173,7 +166,7 @@ impl Constraint for Permutation {
                     format!("is outside {} tuple", union)
                 };
                 let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(union))));
-                return join(c1, c2, domains, tracker);
+                return join(c1, c2, domains, reporter);
             }
         }
 
@@ -214,7 +207,7 @@ impl Constraint for Permutation {
                     let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason1, selection, intersection)));
                     let reason2 = format!("outside {} disguised tuple", intersection);
                     let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(intersection))));
-                    return join(c1, c2, domains, tracker);
+                    return join(c1, c2, domains, reporter);
                 }
             }
         }
@@ -262,7 +255,7 @@ impl Increasing {
 
 impl Constraint for Increasing {
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
         let mut progress = false;
 
@@ -276,7 +269,7 @@ impl Constraint for Increasing {
                     new.difference_with(Domain::range(0, n));
                     if *new != old {
                         progress = true;
-                        tracker.on_progress(format!("{} is not {} considering increasing min of {}", tracker.variable_name(*variable), old.difference(*new), self.description));
+                        reporter.on_progress(format!("{} is not {} considering increasing min of {}", reporter.variable_name(*variable), old.difference(*new), self.description));
                     }
                 }
                 _ => {}
@@ -299,7 +292,7 @@ impl Constraint for Increasing {
                     new.intersect_with(Domain::range(0, n - 1));
                     if *new != old {
                         progress = true;
-                        tracker.on_progress(format!("{} is not {} considering decreasing max of {}", tracker.variable_name(*variable), old.difference(*new), self.description));
+                        reporter.on_progress(format!("{} is not {} considering decreasing max of {}", reporter.variable_name(*variable), old.difference(*new), self.description));
                     }
                 }
                 _ => {}
@@ -347,7 +340,7 @@ impl Equals {
 
 impl Constraint for Equals {
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
         // Compute the intersection of all domains
         let mut domain = Domain::all();
@@ -362,7 +355,7 @@ impl Constraint for Equals {
             new.intersect_with(domain);
             if *new != old {
                 progress = true;
-                tracker.on_progress(format!("{} is not {} since {}", tracker.variable_name(variable), old.difference(*new), self.description));
+                reporter.on_progress(format!("{} is not {} since {}", reporter.variable_name(variable), old.difference(*new), self.description));
             }
         }
 

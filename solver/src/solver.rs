@@ -10,12 +10,12 @@ pub struct Puzzle {
 // only solved constraints
 // order of constraints
 // only constraints with dirty variables
-fn simplify(domains: &mut Domains, constraints: &Constraints, tracker: &mut dyn Tracker) -> Result {
+fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &mut dyn Reporter) -> Result {
     // TODO
     let mut new_constraints = Constraints::new();
     let mut any_progress = false;
     for constraint in constraints {
-        let result = constraint.simplify(domains, tracker);
+        let result = constraint.simplify(domains, reporter);
         match result {
             Result::Unsolvable                    => { return Result::Unsolvable; },
             Result::Solved                        => {},
@@ -36,16 +36,19 @@ fn simplify(domains: &mut Domains, constraints: &Constraints, tracker: &mut dyn 
 
 impl Puzzle {
 
-    pub fn solve_no_branch(self: &mut Puzzle, tracker: &mut dyn Tracker) -> Result {
-        let result = simplify(&mut self.domains, &self.constraints, tracker);
+    pub fn solve_no_branch(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
+        let result = simplify(&mut self.domains, &self.constraints, reporter);
         match result {
-            Result::Progress(constraints) => { self.constraints = constraints; return self.solve(tracker); },
+            Result::Progress(constraints) => { self.constraints = constraints; return self.solve(reporter, config); },
             _ => result,
         }
     }
 
-    pub fn solve(self: &mut Puzzle, tracker: &mut dyn Tracker) -> Result {
-        let result = self.solve_no_branch(tracker);
+    pub fn solve(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
+        let result = self.solve_no_branch(reporter, config);
+        if !config.branch {
+            return result;
+        }
         match result {
             Result::Stuck => {
 
@@ -70,17 +73,16 @@ impl Puzzle {
                             constraints: self.constraints.clone(),
                         };
                         *puzzle.domains.get_mut(*variable).unwrap() = Domain::single(value);
-                        let result = puzzle.solve_no_branch(tracker);
+                        let result = puzzle.solve_no_branch(reporter, config);
                         match result {
                             Result::Unsolvable => { new_domain.remove(value); },
-                            // Note: Assumes there is a unique solution!
-                            // Result::Solved => { *self = puzzle; return Result::Solved; }
+                            Result::Solved => if config.unique { *self = puzzle; return Result::Solved; } else { },
                             _ => {},
                         }
                     }
                     if new_domain != domain {
                         *self.domains.get_mut(*variable).unwrap() = new_domain;
-                        return self.solve(tracker);
+                        return self.solve(reporter, config);
                     }
                 }
 
