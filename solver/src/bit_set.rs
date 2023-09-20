@@ -23,6 +23,15 @@ impl BitSet {
         }
     }
 
+    pub fn single(value: usize) -> Self {
+        if value >= 128 {
+            panic!("value({}) out of bounds", value)
+        }
+        BitSet {
+            bits: 1 << value,
+        }
+    }
+
     pub fn range(min: usize, max: usize) -> Self {
         if min > max || max >= 128 {
             panic!("range({}, {}) invalid", min, max);
@@ -58,6 +67,13 @@ impl BitSet {
             panic!("value({}) out of bounds", value)
         }
         self.bits |= 1 << value;
+    }
+
+    pub fn remove(&mut self, value: usize) {
+        if value >= 128 {
+            panic!("value({}) out of bounds", value)
+        }
+        self.bits &= !(1 << value);
     }
 
     pub fn difference(&self, other: BitSet) -> BitSet {
