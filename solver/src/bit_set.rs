@@ -51,10 +51,16 @@ impl BitSet {
     }
 
     pub fn min(&self) -> usize {
+        if self.bits == 0 {
+            panic!("min(0)")
+        }
         return self.bits.trailing_zeros() as usize;
     }
 
     pub fn max(&self) -> usize {
+        if self.bits == 0 {
+            panic!("max(0)")
+        }
         return self.iter().rev().next().unwrap();
     }
 

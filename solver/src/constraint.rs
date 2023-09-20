@@ -282,7 +282,11 @@ impl Constraint for Increasing {
                 _ => {}
             }
 
-            min = Some(domains.get(*variable).unwrap().min());
+            let domain = *domains.get(*variable).unwrap();
+            if domain.empty() {
+                return Result::Unsolvable;
+            }
+            min = Some(domain.min());
         }
 
         // Restrict large values
@@ -301,7 +305,11 @@ impl Constraint for Increasing {
                 _ => {}
             }
 
-            max = Some(domains.get(*variable).unwrap().max());
+            let domain = *domains.get(*variable).unwrap();
+            if domain.empty() {
+                return Result::Unsolvable;
+            }
+            max = Some(domain.max());
         }
 
         if progress {

@@ -74,7 +74,7 @@ impl Puzzle {
                         match result {
                             Result::Unsolvable => { new_domain.remove(value); },
                             // Note: Assumes there is a unique solution!
-                            Result::Solved => { *self = puzzle; return Result::Solved; }
+                            // Result::Solved => { *self = puzzle; return Result::Solved; }
                             _ => {},
                         }
                     }
