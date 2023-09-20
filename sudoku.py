@@ -81,6 +81,10 @@ class Sudoku(object):
         try:
             with open(self._sudoku_filename, 'rb') as sudoku_file:
                 (self._board, self._constraints) = pickle.load(sudoku_file)
+                try:
+                    self._constraints.palindromes
+                except AttributeError:
+                    self._constraints.palindromes = []
         except FileNotFoundError:
             self._board = [ [ None for c in range(9) ] for r in range(9) ]
             self._constraints = Constraints()
@@ -143,7 +147,15 @@ class Sudoku(object):
                 "description": "thermometer"
             })
 
-        #FIXME palindromes!
+        for line in self._constraints.palindromes:
+            n = len(line.path)//2
+            for i in range(n):
+                variables = [ f"{r+1}:{c+1}" for (r, c) in [line.path[i], line.path[-(i+1)]] ]
+                constraints.append({
+                    "type": "Equals",
+                    "variables": variables,
+                    "description": "palindrome"
+                })
 
         solver_input = {
             "domains": domains,

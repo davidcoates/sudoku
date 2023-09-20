@@ -319,3 +319,57 @@ impl Constraint for Increasing {
         return &self.description;
     }
 }
+
+#[derive(Clone)]
+pub struct Equals {
+    description: String,
+    variables: VariableSet,
+}
+
+impl Equals {
+
+    pub fn new(description: String, variables: VariableSet) -> Self {
+        return Equals {
+            description,
+            variables,
+        };
+    }
+
+}
+
+impl Constraint for Equals {
+
+    fn simplify(self: Rc<Self>, domains: &mut Domains, tracker: &mut dyn Tracker) -> Result {
+
+        // Compute the intersection of all domains
+        let mut domain = Domain::all();
+        for variable in self.variables.iter() {
+            domain.intersect_with(*domains.get_mut(variable).unwrap());
+        }
+
+        let mut progress = false;
+        for variable in self.variables.iter() {
+            let new = domains.get_mut(variable).unwrap();
+            let old = *new;
+            new.intersect_with(domain);
+            if *new != old {
+                progress = true;
+                tracker.on_progress(format!("{} is not {} since {}", tracker.variable_name(variable), old.difference(*new), self.description));
+            }
+        }
+
+        if progress {
+            return Result::Progress(vec![BoxedConstraint::new(self)]);
+        } else {
+            return Result::Stuck;
+        }
+    }
+
+    fn variables(&self) -> &VariableSet {
+        &self.variables
+    }
+
+    fn description(&self) -> &String {
+        return &self.description;
+    }
+}

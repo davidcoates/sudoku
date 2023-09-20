@@ -9,7 +9,6 @@ use std::time::Instant;
 
 use types::*;
 use constraint::*;
-use bit_set::*;
 use solver::*;
 
 use serde_json::json;
@@ -55,7 +54,7 @@ fn main() {
         let description = constraint["description"].as_str().unwrap().to_string();
         match constraint["type"].as_str().unwrap() {
             "Permutation" => {
-                let mut variables = BitSet::new();
+                let mut variables = VariableSet::new();
                 for variable in constraint["variables"].as_array().unwrap() {
                     let variable = variable.as_str().unwrap();
                     variables.insert(variable_name_to_index[variable]);
@@ -76,6 +75,14 @@ fn main() {
                 }
 
                 constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(description, variables))));
+            }
+            "Equals" => {
+                let mut variables = VariableSet::new();
+                for variable in constraint["variables"].as_array().unwrap() {
+                    let variable = variable.as_str().unwrap();
+                    variables.insert(variable_name_to_index[variable]);
+                }
+                constraints.push(BoxedConstraint::new(Rc::new(Equals::new(description, variables))));
             }
             _ => panic!("unknown type"),
         }

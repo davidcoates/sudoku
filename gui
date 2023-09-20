@@ -334,7 +334,7 @@ class SudokuUI(tk.Frame):
             (row, col) = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
             if fuzzy:
                 (ox, oy) = ((col + 0.5) * SIDE + MARGIN, (row + 0.5) * SIDE + MARGIN)
-                if (ox - x)**2 + (oy - y)**2 >= (SIDE/2)**2:
+                if (ox - x)**2 + (oy - y)**2 >= (SIDE/3)**2:
                     return None
             return (row, col)
         else:
@@ -378,10 +378,17 @@ class SudokuUI(tk.Frame):
         if self._pending_line is None:
             return
         selection = self._get_cell(event, fuzzy=True)
-        if selection is not None:
-            if selection != self._pending_line.path[-1]:
-                self._pending_line.path.append(selection)
-                self._draw_line(self._pending_line)
+        if selection is None:
+            return
+        tip = self._pending_line.path[-1]
+        if selection == tip:
+            return
+        (r0, c0) = tip
+        (r1, c1) = selection
+        if abs(r1 - r0) > 1 or abs(c1 - c0) > 1:
+            return
+        self._pending_line.path.append(selection)
+        self._draw_line(self._pending_line)
 
     def _draw_line(self, line):
         if line.style == Line.Style.THERMOMETER:
@@ -458,7 +465,7 @@ class SudokuUI(tk.Frame):
     def _solve(self):
         (solve_state, board, breadcrumbs) = self._sudoku.solve()
         # TODO show this in the GUI...
-        # print(breadcrumbs)
+        print(breadcrumbs)
         action = MultiAction()
         for r, row in enumerate(board):
             for c, digit in enumerate(row):
