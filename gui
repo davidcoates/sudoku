@@ -16,9 +16,27 @@ BACKGROUND_COLOR = "white smoke"
 INLAY_COLOR = "linen"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
-THERMO_COLOR = "light grey"
-THERMO_PENDING_COLOR = "dark grey"
 CURSOR_COLOR = "red"
+
+class Line():
+
+    class Style(Enum):
+        THERMOMETER = 0
+        SIMPLE = 1
+
+    def __init__(self, path, style, color):
+        self.path = path
+        self.style = style
+        self.color = color
+
+    @staticmethod
+    def pending_thermometer(cell):
+        return Line([cell], Line.Style.THERMOMETER, "dark grey")
+
+    @staticmethod
+    def thermometer(path):
+        return Line(path, Line.Style.THERMOMETER, "light grey")
+
 
 
 class Action(ABC):
@@ -131,7 +149,7 @@ class SudokuUI(tk.Frame):
         tk.Frame.__init__(self, parent)
         self._parent = parent
         self._selection = None
-        self._thermo = None
+        self._pending_line = None
         self._actions = ActionStack()
         self._initUI()
 
@@ -256,7 +274,7 @@ class SudokuUI(tk.Frame):
         self._canvas.delete("numbers")
         self._canvas.delete("constraints")
         for thermo in self._sudoku.constraints.thermometers:
-            self._draw_thermo(thermo.path, pending=False)
+            self._draw_line(Line.thermometer(thermo.path))
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -306,50 +324,52 @@ class SudokuUI(tk.Frame):
                 else:
                     self._selection = selection
             elif self.edit_mode == EditMode.THERMOMETER:
-                self._thermo = [selection]
+                self._pending_line = Line.pending_thermometer(selection)
         else:
             self._selection = None
 
         self._draw_cursor()
 
     def _on_mouse_released(self, event):
-        if self._thermo is None:
+        if self._pending_line is None:
             return
-        self._apply(ThermometerAction(self._sudoku, Thermometer(self._thermo)))
-        self._thermo = None
+        self._apply(ThermometerAction(self._sudoku, Thermometer(self._pending_line.path)))
+        self._pending_line = None
 
     def _on_mouse_moved(self, event):
-        if self._thermo is None:
+        if self._pending_line is None:
             return
         selection = self._get_cell(event, fuzzy=True)
         if selection is not None:
-            if selection != self._thermo[-1]:
-                self._thermo.append(selection)
-                self._draw_thermo(self._thermo, pending=True)
+            if selection != self._pending_line.path[-1]:
+                self._pending_line.path.append(selection)
+                self._draw_line(self._pending_line)
 
-    def _draw_thermo(self, path, pending):
-        color = THERMO_PENDING_COLOR if pending else THERMO_COLOR
-        last_row, last_col = None, None
-        for (row, col) in path:
-            if last_row is None:
-                x0 = MARGIN + (col + 0.05) * SIDE + 1
-                y0 = MARGIN + (row + 0.05) * SIDE + 1
-                x1 = MARGIN + (col + 0.95) * SIDE - 1
-                y1 = MARGIN + (row + 0.95) * SIDE - 1
-                self._canvas.create_oval(
-                    x0, y0, x1, y1,
-                    fill=color, outline="", tags="constraints"
-                )
-            else:
-                x0 = MARGIN + (last_col + 0.5) * SIDE + 1
-                y0 = MARGIN + (last_row + 0.5) * SIDE + 1
-                x1 = MARGIN + (     col + 0.5) * SIDE + 1
-                y1 = MARGIN + (     row + 0.5) * SIDE + 1
-                self._canvas.create_line(
-                    x0, y0, x1, y1,
-                    fill=color, width=20, capstyle=tk.ROUND, tags="constraints"
-                )
-            last_row, last_col = row, col
+    def _draw_line(self, line):
+        if line.style == Line.Style.THERMOMETER:
+            last_row, last_col = None, None
+            for (row, col) in line.path:
+                if last_row is None:
+                    x0 = MARGIN + (col + 0.05) * SIDE + 1
+                    y0 = MARGIN + (row + 0.05) * SIDE + 1
+                    x1 = MARGIN + (col + 0.95) * SIDE - 1
+                    y1 = MARGIN + (row + 0.95) * SIDE - 1
+                    self._canvas.create_oval(
+                        x0, y0, x1, y1,
+                        fill=line.color, outline="", tags="constraints"
+                    )
+                else:
+                    x0 = MARGIN + (last_col + 0.5) * SIDE + 1
+                    y0 = MARGIN + (last_row + 0.5) * SIDE + 1
+                    x1 = MARGIN + (     col + 0.5) * SIDE + 1
+                    y1 = MARGIN + (     row + 0.5) * SIDE + 1
+                    self._canvas.create_line(
+                        x0, y0, x1, y1,
+                        fill=line.color, width=20, capstyle=tk.ROUND, tags="constraints"
+                    )
+                last_row, last_col = row, col
+        else:
+            assert(False)
 
     def _on_key_pressed(self, event):
         if self._selection is None:
