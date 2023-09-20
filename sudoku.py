@@ -25,10 +25,17 @@ class Sudoku(object):
         self._sudoku_filename = f"sudokus/{sudoku_name}.sudoku"
         self.reset()
 
+    def rules(self):
+        rules = ["Normal Sudoku rules apply."]
+        if self._constraints.thermometers:
+            rules.append("Digits on a thermometer strictly increase from the bulb end.")
+        return " ".join(rules)
+
     def to_json(self):
         js = {
             "title": self._sudoku_name,
             "author": "Dave",
+            "ruleset": self.rules(),
             "size": 9,
             "grid": [ [ dict() for c in range(9) ] for r in range(9) ],
             "thermometer": []
