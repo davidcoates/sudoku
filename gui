@@ -263,6 +263,8 @@ class SudokuUI(tk.Frame):
                                       onvalue=True,
                                       offvalue=False,
                                       background=INLAY_COLOR,
+                                      padx=5,
+                                      pady=5,
                                       fg="black",
                                       font=LABEL_FONT)
         branch_check.pack()
@@ -273,6 +275,8 @@ class SudokuUI(tk.Frame):
                                       onvalue=True,
                                       offvalue=False,
                                       background=INLAY_COLOR,
+                                      padx=5,
+                                      pady=5,
                                       fg="black",
                                       font=LABEL_FONT)
         unique_check.pack()
@@ -287,7 +291,7 @@ class SudokuUI(tk.Frame):
 
         self._solve_label = tk.Label(info_panel,
                                      text="",
-                                     width=30,
+                                     width=40,
                                      justify="center",
                                      fg ="black",
                                      font=("Courier New", 10),
