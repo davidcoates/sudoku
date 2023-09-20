@@ -37,6 +37,14 @@ class Line():
     def thermometer(path):
         return Line(path, Line.Style.THERMOMETER, "light grey")
 
+    @staticmethod
+    def pending_palindrome(cell):
+        return Line([cell], Line.Style.SIMPLE, "gold3")
+
+    @staticmethod
+    def palindrome(path):
+        return Line(path, Line.Style.SIMPLE, "gold2")
+
 
 
 class Action(ABC):
@@ -105,26 +113,42 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
-class ThermometerAction(Action):
+class LineAction(Action):
 
-    def __init__(self, sudoku, thermo):
+    def __init__(self, sudoku, line):
         self._sudoku = sudoku
-        self._thermo = thermo
+        self._line = line
+
+    def _lines(self):
+        assert(False)
 
     def apply(self):
-        thermos = self._sudoku.constraints.thermometers
-        if self._thermo in thermos:
-            thermos.remove(self._thermo)
+        lines = self._lines()
+        if self._line in lines:
+            lines.remove(self._line)
         else:
-            thermos.append(self._thermo)
+            lines.append(self._line)
 
     def undo(self):
         self.apply()
 
 
+class ThermometerAction(LineAction):
+
+    def _lines(self):
+        return self._sudoku.constraints.thermometers
+
+
+class PalindromeAction(LineAction):
+
+    def _lines(self):
+        return self._sudoku.constraints.palindromes
+
+
 class EditMode(Enum):
     DIGIT = 0
     THERMOMETER = 1
+    PALINDROME = 2
 
 def parse_arguments():
     """
@@ -273,8 +297,10 @@ class SudokuUI(tk.Frame):
     def _draw_sudoku(self):
         self._canvas.delete("numbers")
         self._canvas.delete("constraints")
-        for thermo in self._sudoku.constraints.thermometers:
-            self._draw_line(Line.thermometer(thermo.path))
+        for line in self._sudoku.constraints.thermometers:
+            self._draw_line(Line.thermometer(line.path))
+        for line in self._sudoku.constraints.palindromes:
+            self._draw_line(Line.palindrome(line.path))
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -325,6 +351,10 @@ class SudokuUI(tk.Frame):
                     self._selection = selection
             elif self.edit_mode == EditMode.THERMOMETER:
                 self._pending_line = Line.pending_thermometer(selection)
+            elif self.edit_mode == EditMode.PALINDROME:
+                self._pending_line = Line.pending_palindrome(selection)
+            else:
+                assert(False)
         else:
             self._selection = None
 
@@ -333,7 +363,15 @@ class SudokuUI(tk.Frame):
     def _on_mouse_released(self, event):
         if self._pending_line is None:
             return
-        self._apply(ThermometerAction(self._sudoku, Thermometer(self._pending_line.path)))
+        if len(self._pending_line.path) <= 1:
+            self._pending_line = None
+            return
+        if self.edit_mode == EditMode.THERMOMETER:
+            self._apply(ThermometerAction(self._sudoku, Thermometer(self._pending_line.path)))
+        elif self.edit_mode == EditMode.PALINDROME:
+            self._apply(PalindromeAction(self._sudoku, Palindrome(self._pending_line.path)))
+        else:
+            assert(False)
         self._pending_line = None
 
     def _on_mouse_moved(self, event):
@@ -366,6 +404,19 @@ class SudokuUI(tk.Frame):
                     self._canvas.create_line(
                         x0, y0, x1, y1,
                         fill=line.color, width=20, capstyle=tk.ROUND, tags="constraints"
+                    )
+                last_row, last_col = row, col
+        elif line.style == Line.Style.SIMPLE:
+            last_row, last_col = None, None
+            for (row, col) in line.path:
+                if last_row is not None:
+                    x0 = MARGIN + (last_col + 0.5) * SIDE + 1
+                    y0 = MARGIN + (last_row + 0.5) * SIDE + 1
+                    x1 = MARGIN + (     col + 0.5) * SIDE + 1
+                    y1 = MARGIN + (     row + 0.5) * SIDE + 1
+                    self._canvas.create_line(
+                        x0, y0, x1, y1,
+                        fill=line.color, width=15, capstyle=tk.ROUND, tags="constraints"
                     )
                 last_row, last_col = row, col
         else:

@@ -10,10 +10,14 @@ from typing import *
 class Thermometer:
     path: list[(int, int)]
 
+@dataclass
+class Palindrome:
+    path: list[(int, int)]
 
 @dataclass
 class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
+    palindromes: list[Palindrome] = field(default_factory=list)
 
 
 class Sudoku(object):
@@ -29,6 +33,8 @@ class Sudoku(object):
         rules = ["Normal Sudoku rules apply."]
         if self._constraints.thermometers:
             rules.append("Digits on a thermometer strictly increase from the bulb end.")
+        if self._constraints.palindromes:
+            rules.append("Digits on a yellow line form a palindrome.")
         return " ".join(rules)
 
     def to_json(self):
@@ -38,14 +44,29 @@ class Sudoku(object):
             "ruleset": self.rules(),
             "size": 9,
             "grid": [ [ dict() for c in range(9) ] for r in range(9) ],
-            "thermometer": []
+            "thermometer": [],
+            "palindrome": [],
+            "line": []
         }
         for r, row in enumerate(self._board):
             for c, digit in enumerate(row):
                 if digit is not None:
                     js["grid"][r][c] = { "value": digit, "given": True }
-        for thermo in self._constraints.thermometers:
-            js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in thermo.path ]]})
+        for line in self._constraints.thermometers:
+            js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in line.path ]]})
+        for line in self._constraints.palindromes:
+            path = [ f"R{r+1}C{c+1}" for (r, c) in line.path ]
+            js["palindrome"].append({ "lines": [path]} )
+            js["line"].append({
+                "lines": [path],
+                "baseC": "#FFDD00",
+                "outlineC": "#FFDD00",
+                "fontC": "#000000",
+                "size": 0.5,
+                "width": 0.5,
+                "height": 0.5,
+                "angle": 0,
+             })
         return json.dumps(js)
 
     def to_url(self):
@@ -114,13 +135,15 @@ class Sudoku(object):
                     f"sudoku box({r*3 + c + 1})"
                 ))
 
-        for thermo in self._constraints.thermometers:
-            variables = [ f"{r+1}:{c+1}" for (r, c) in thermo.path ]
+        for line in self._constraints.thermometers:
+            variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
             constraints.append({
                 "type": "Increasing",
                 "variables": variables,
                 "description": "thermometer"
             })
+
+        #FIXME palindromes!
 
         solver_input = {
             "domains": domains,
