@@ -15,10 +15,14 @@ class Palindrome:
     path: list[(int, int)]
 
 @dataclass
+class Renban:
+    path: list[(int, int)]
+
+@dataclass
 class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
     palindromes: list[Palindrome] = field(default_factory=list)
-
+    renbans: list[Renban] = field(default_factory=list)
 
 class Sudoku(object):
     """
@@ -81,10 +85,11 @@ class Sudoku(object):
         try:
             with open(self._sudoku_filename, 'rb') as sudoku_file:
                 (self._board, self._constraints) = pickle.load(sudoku_file)
-                try:
-                    self._constraints.palindromes
-                except AttributeError:
-                    self._constraints.palindromes = []
+                for name, field in Constraints.__dataclass_fields__.items():
+                    try:
+                        getattr(self._constraints, name)
+                    except AttributeError:
+                        setattr(self._constraints, name, field.default_factory())
         except FileNotFoundError:
             self._board = [ [ None for c in range(9) ] for r in range(9) ]
             self._constraints = Constraints()

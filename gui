@@ -46,6 +46,14 @@ class Line():
     def palindrome(path):
         return Line(path, Line.Style.SIMPLE, "gold2")
 
+    @staticmethod
+    def pending_renban(cell):
+        return Line([cell], Line.Style.SIMPLE, "purple3")
+
+    @staticmethod
+    def renban(path):
+        return Line(path, Line.Style.SIMPLE, "purple2")
+
 
 
 class Action(ABC):
@@ -135,21 +143,23 @@ class LineAction(Action):
 
 
 class ThermometerAction(LineAction):
-
     def _lines(self):
         return self._sudoku.constraints.thermometers
 
-
 class PalindromeAction(LineAction):
-
     def _lines(self):
         return self._sudoku.constraints.palindromes
+
+class RenbanAction(LineAction):
+    def _lines(self):
+        return self._sudoku.constraints.renbans
 
 
 class EditMode(Enum):
     DIGIT = 0
     THERMOMETER = 1
     PALINDROME = 2
+    RENBAN = 3
 
 def parse_arguments():
     """
@@ -336,6 +346,8 @@ class SudokuUI(tk.Frame):
             self._draw_line(Line.thermometer(line.path))
         for line in self._sudoku.constraints.palindromes:
             self._draw_line(Line.palindrome(line.path))
+        for line in self._sudoku.constraints.renbans:
+            self._draw_line(Line.renban(line.path))
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -388,6 +400,8 @@ class SudokuUI(tk.Frame):
                 self._pending_line = Line.pending_thermometer(selection)
             elif self.edit_mode == EditMode.PALINDROME:
                 self._pending_line = Line.pending_palindrome(selection)
+            elif self.edit_mode == EditMode.RENBAN:
+                self._pending_line = Line.pending_renban(selection)
             else:
                 assert(False)
         else:
@@ -405,6 +419,8 @@ class SudokuUI(tk.Frame):
             self._apply(ThermometerAction(self._sudoku, Thermometer(self._pending_line.path)))
         elif self.edit_mode == EditMode.PALINDROME:
             self._apply(PalindromeAction(self._sudoku, Palindrome(self._pending_line.path)))
+        elif self.edit_mode == EditMode.RENBAN:
+            self._apply(RenbanAction(self._sudoku, Renban(self._pending_line.path)))
         else:
             assert(False)
         self._pending_line = None
