@@ -47,8 +47,16 @@ impl BitSet {
         }
     }
 
+    pub fn contains(&self, value: usize) -> bool {
+        return (1 << value) & self.bits != 0;
+    }
+
     pub fn iter(&self) -> BitSetIter {
         BitSetIter{ bits: self.bits }
+    }
+
+    pub fn value_unchecked(&self) -> usize {
+        return self.iter().next().unwrap();
     }
 
     pub fn min(&self) -> usize {

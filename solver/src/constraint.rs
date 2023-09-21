@@ -12,8 +12,14 @@ pub enum Result {
 
 pub trait Constraint {
     fn variables(&self) -> &VariableSet;
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result;
     fn id(&self) -> ConstraintID;
+
+    // provided not all variables are solved, and no variable is unsolvable,
+    // try to simplify by reducing the domain of variables and/or replace the constraint with new (smaller) constraint(s).
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result;
+
+    // provided all variables are solved, is this constraint satisfied?
+    fn check_solved(&self, domains: &mut Domains) -> bool;
 }
 
 pub type Constraints = Vec<BoxedConstraint>;
@@ -46,7 +52,14 @@ impl BoxedConstraint {
                 all_solved = false;
             }
         }
-        return if all_solved { Some(Result::Solved) } else { None };
+        if all_solved {
+            if self.unbox().check_solved(domains) {
+                return Some(Result::Solved);
+            } else {
+                return Some(Result::Unsolvable);
+            }
+        }
+        return None;
     }
 
     pub fn simplify(&self, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
@@ -114,6 +127,14 @@ impl Permutation {
 }
 
 impl Constraint for Permutation {
+
+    fn check_solved(&self, domains: &mut Domains) -> bool {
+        let mut domain = Domain::new();
+        for variable in self.variables.iter() {
+            domain.union_with(*domains.get(variable).unwrap())
+        }
+        return domain == self.domain;
+    }
 
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
@@ -245,6 +266,18 @@ impl Increasing {
 
 impl Constraint for Increasing {
 
+    fn check_solved(&self, domains: &mut Domains) -> bool {
+        let mut last : Option<usize> = None;
+        for variable in self.variables.iter() {
+            let value = domains.get(*variable).unwrap().value_unchecked();
+            if last.is_some() && value <= last.unwrap() {
+                return false;
+            }
+            last = Some(value);
+        }
+        return true;
+    }
+
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
         let mut progress = false;
@@ -337,6 +370,18 @@ impl Equals {
 
 impl Constraint for Equals {
 
+    fn check_solved(&self, domains: &mut Domains) -> bool {
+        let mut last : Option<usize> = None;
+        for variable in self.variables.iter() {
+            let value = domains.get(variable).unwrap().value_unchecked();
+            if last.is_some() && value != last.unwrap() {
+                return false;
+            }
+            last = Some(value);
+        }
+        return true;
+    }
+
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
         // Compute the intersection of all domains
@@ -395,6 +440,14 @@ impl ConsecutiveSet {
 }
 
 impl Constraint for ConsecutiveSet {
+
+    fn check_solved(&self, domains: &mut Domains) -> bool {
+        let mut domain = Domain::new();
+        for variable in self.variables.iter() {
+            domain.union_with(*domains.get(variable).unwrap());
+        }
+        return domain.len() == self.variables.len() && (domain.max() - domain.min() + 1) == domain.len();
+    }
 
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 

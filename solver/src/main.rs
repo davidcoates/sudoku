@@ -116,11 +116,11 @@ fn main() {
     };
 
     let config = Config{
-        branch: input["branch"].as_bool().unwrap(),
-        unique: input["unique"].as_bool().unwrap(),
+        strict: input["strict"].as_bool().unwrap(),
+        max_depth: input["max_depth"].as_u64().unwrap(),
     };
 
-    let mut puzzle = Puzzle{ domains, constraints };
+    let mut puzzle = Puzzle::new(domains, constraints);
 
     let now = Instant::now();
     let result = puzzle.solve(&mut reporter, config);

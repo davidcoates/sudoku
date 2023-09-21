@@ -279,10 +279,10 @@ class SudokuUI(tk.Frame):
                                       fg="black",
                                       font=LABEL_FONT)
         branch_check.pack()
-        self._unique = tk.BooleanVar()
-        unique_check = tk.Checkbutton(config_panel,
-                                      text="Unique",
-                                      variable=self._unique,
+        self._strict = tk.BooleanVar()
+        strict_check = tk.Checkbutton(config_panel,
+                                      text="Strict",
+                                      variable=self._strict,
                                       onvalue=True,
                                       offvalue=False,
                                       background=INLAY_COLOR,
@@ -291,7 +291,7 @@ class SudokuUI(tk.Frame):
                                       pady=5,
                                       fg="black",
                                       font=LABEL_FONT)
-        unique_check.pack()
+        strict_check.pack()
 
         # Control panel
         self._control_images = []
@@ -514,7 +514,7 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
 
     def _solve(self):
-        (solve_state, board) = self._sudoku.solve(self._branch.get(), self._unique.get())
+        (solve_state, board) = self._sudoku.solve(self._branch.get(), self._strict.get())
         # TODO show breadcrumbs in gui
         if board is None:
             self._set_solve_state(solve_state)

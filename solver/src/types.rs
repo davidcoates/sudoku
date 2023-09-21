@@ -16,6 +16,6 @@ pub trait Reporter {
 
 #[derive(Clone,Copy)]
 pub struct Config {
-    pub branch: bool,
-    pub unique: bool,
+    pub strict: bool,
+    pub max_depth: u64,
 }

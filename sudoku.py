@@ -104,7 +104,7 @@ class Sudoku(object):
     def constraints(self):
         return self._constraints
 
-    def solve(self, branch, unique):
+    def solve(self, branch, strict):
 
         print(self.to_url())
 
@@ -173,9 +173,9 @@ class Sudoku(object):
         solver_input = {
             "domains": domains,
             "constraints": constraints,
-            "branch": branch,
-            "unique": unique,
+            "strict": strict,
             "breadcrumbs": False,
+            "max_depth": 1 if branch else 0,
         }
 
         try:
@@ -185,12 +185,10 @@ class Sudoku(object):
                 stderr=subprocess.PIPE,
                 input=json.dumps(solver_input),
                 encoding="ascii",
-                timeout=3)
+                timeout=30)
         except subprocess.TimeoutExpired:
             return ("Timed Out", None)
 
-        print(pipe.stderr)
-        print(pipe.stdout)
         solver_output = json.loads(pipe.stdout)
         result = solver_output["result"]
         duration_ms = solver_output["duration_ms"]

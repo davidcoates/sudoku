@@ -4,6 +4,7 @@ use crate::constraint::*;
 pub struct Puzzle {
     pub domains: Domains,
     pub constraints: Constraints,
+    pub depth: u64,
 }
 
 // TODO could optimise this for:
@@ -36,17 +37,25 @@ fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &mut dyn
 
 impl Puzzle {
 
+    pub fn new(domains: Domains, constraints: Constraints) -> Self {
+        Puzzle {
+            domains: domains,
+            constraints: constraints,
+            depth: 1,
+        }
+    }
+
     pub fn solve_no_branch(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
         let result = simplify(&mut self.domains, &self.constraints, reporter);
         match result {
-            Result::Progress(constraints) => { self.constraints = constraints; return self.solve(reporter, config); },
+            Result::Progress(constraints) => { self.constraints = constraints; return self.solve_no_branch(reporter, config); },
             _ => result,
         }
     }
 
     pub fn solve(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
         let result = self.solve_no_branch(reporter, config);
-        if !config.branch {
+        if self.depth > config.max_depth {
             return result;
         }
         match result {
@@ -59,9 +68,13 @@ impl Puzzle {
                     .collect::<Vec<_>>();
                 variables
                     .sort_by(|(_, d1), (_, d2)| d1.len().cmp(&d2.len()));
-                let variables = variables.iter()
+                let mut variables = variables.iter()
                     .map(|(v, _)| *v)
                     .collect::<Vec<_>>();
+
+                // Sort again, looking at most constrained
+                let num_constraints = |v| self.constraints.iter().filter(|c| c.unbox().variables().contains(v)).count();
+                variables.sort_by(|v1, v2| num_constraints(*v2).cmp(&num_constraints(*v1)));
 
                 for variable in variables.iter() {
                     let domain = *self.domains.get(*variable).unwrap();
@@ -70,7 +83,8 @@ impl Puzzle {
                         // Guess variable = value and try to solve without branching
                         let mut puzzle = Puzzle {
                             domains: self.domains.clone(),
-                            constraints: self.constraints.clone(),
+                            constraints: self.constraints.clone(), // TODO do constraints really need to be cloned?
+                            depth: self.depth + 1,
                         };
                         *puzzle.domains.get_mut(*variable).unwrap() = Domain::single(value);
                         if reporter.enabled() {
@@ -79,7 +93,7 @@ impl Puzzle {
                         let result = puzzle.solve_no_branch(reporter, config);
                         match result {
                             Result::Unsolvable => { new_domain.remove(value); },
-                            Result::Solved => if config.unique { *self = puzzle; return Result::Solved; } else { },
+                            Result::Solved => if config.strict {} else { *self = puzzle; return Result::Solved; },
                             _ => {},
                         }
                     }
