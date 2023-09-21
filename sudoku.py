@@ -162,6 +162,14 @@ class Sudoku(object):
                     "description": "palindrome"
                 })
 
+        for line in self._constraints.renbans:
+            variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
+            constraints.append({
+                "type": "ConsecutiveSet",
+                "variables": variables,
+                "description": "renban"
+            })
+
         solver_input = {
             "domains": domains,
             "constraints": constraints,
@@ -181,6 +189,8 @@ class Sudoku(object):
         except subprocess.TimeoutExpired:
             return ("Timed Out", None)
 
+        print(pipe.stderr)
+        print(pipe.stdout)
         solver_output = json.loads(pipe.stdout)
         result = solver_output["result"]
         duration_ms = solver_output["duration_ms"]

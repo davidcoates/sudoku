@@ -96,6 +96,14 @@ fn main() {
                 }
                 constraints.push(BoxedConstraint::new(Rc::new(Equals::new(id, variables))));
             }
+            "ConsecutiveSet" => {
+                let mut variables = VariableSet::new();
+                for variable in constraint["variables"].as_array().unwrap() {
+                    let variable = variable.as_str().unwrap();
+                    variables.insert(variable_name_to_id[variable]);
+                }
+                constraints.push(BoxedConstraint::new(Rc::new(ConsecutiveSet::new(id, variables))));
+            }
             _ => panic!("unknown type"),
         }
 

@@ -32,11 +32,12 @@ impl BitSet {
         }
     }
 
+    // [min, max]
     pub fn range(min: usize, max: usize) -> Self {
         if min > max || max >= 128 {
             panic!("range({}, {}) invalid", min, max);
         }
-        let bits = ((1 << (max + 1)) - 1) & !((1 << (min + 1)) - 1);
+        let bits = ((1 << (max + 1)) - 1) & !((1 << min) - 1);
         return BitSet::from_bits(bits);
     }
 
