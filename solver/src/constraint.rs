@@ -11,12 +11,9 @@ pub enum Result {
 }
 
 pub trait Constraint {
-
     fn variables(&self) -> &VariableSet;
-
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result;
-
-    fn description(&self) -> &String;
+    fn id(&self) -> ConstraintID;
 }
 
 pub type Constraints = Vec<BoxedConstraint>;
@@ -96,19 +93,19 @@ fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporte
 // Distinct digits covering a domain
 #[derive(Clone)]
 pub struct Permutation {
-    description: String,
+    id: ConstraintID,
     variables: VariableSet,
     domain: Domain,
 }
 
 impl Permutation {
 
-    pub fn new(description: String, variables: VariableSet, domain: Domain) -> Self {
+    pub fn new(id: ConstraintID, variables: VariableSet, domain: Domain) -> Self {
         if variables.len() != domain.len() {
             panic!("bad Permutation: #variables != #domain")
         }
         return Permutation {
-            description,
+            id,
             variables,
             domain
         };
@@ -129,7 +126,9 @@ impl Constraint for Permutation {
             new.intersect_with(self.domain);
             if *new != old {
                 progress = true;
-                reporter.on_progress(format!("{} is not {} since {}", reporter.variable_name(variable), old.difference(*new), self.description));
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
+                }
             }
         }
 
@@ -153,19 +152,9 @@ impl Constraint for Permutation {
                 union.union_with(*domains.get(variable).unwrap());
             }
             if union.len() == selection.len() {
-                let reason1 = if union.len() == 1 {
-                    format!("{}", self.description)
-                } else {
-                    format!("is inside {} tuple", union)
-                };
-                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason1, selection, union)));
+                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection, union)));
                 let selection_complement = self.variables.difference(selection);
-                let reason2 = if union.len() == 1 {
-                    format!("{}", self.description)
-                } else {
-                    format!("is outside {} tuple", union)
-                };
-                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(union))));
+                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection_complement, self.domain.difference(union))));
                 return join(c1, c2, domains, reporter);
             }
         }
@@ -203,10 +192,8 @@ impl Constraint for Permutation {
                     }
                 }
                 if ok {
-                    let reason1 = format!("inside {} disguised tuple", intersection);
-                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(reason1, selection, intersection)));
-                    let reason2 = format!("outside {} disguised tuple", intersection);
-                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(reason2, selection_complement, self.domain.difference(intersection))));
+                    let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection, intersection)));
+                    let c2 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, selection_complement, self.domain.difference(intersection))));
                     return join(c1, c2, domains, reporter);
                 }
             }
@@ -223,8 +210,8 @@ impl Constraint for Permutation {
         &self.variables
     }
 
-    fn description(&self) -> &String {
-        return &self.description
+    fn id(&self) -> ConstraintID {
+        self.id
     }
 }
 
@@ -232,20 +219,20 @@ impl Constraint for Permutation {
 // Strictly increasing digits
 #[derive(Clone)]
 pub struct Increasing {
-    description: String,
+    id: ConstraintID,
     variables: Vec<Variable>,
     variable_set: VariableSet,
 }
 
 impl Increasing {
 
-    pub fn new(description: String, variables: Vec<Variable>) -> Self {
+    pub fn new(id: ConstraintID, variables: Vec<Variable>) -> Self {
         let mut variable_set = VariableSet::new();
         for variable in variables.iter() {
             variable_set.insert(*variable);
         }
         return Increasing {
-            description,
+            id,
             variables,
             variable_set,
         };
@@ -269,7 +256,9 @@ impl Constraint for Increasing {
                     new.difference_with(Domain::range(0, n));
                     if *new != old {
                         progress = true;
-                        reporter.on_progress(format!("{} is not {} considering increasing min of {}", reporter.variable_name(*variable), old.difference(*new), self.description));
+                        if reporter.enabled() {
+                            reporter.emit(format!("{} is not {} considering increasing min of {}", reporter.variable_name(*variable), old.difference(*new), reporter.constraint_name(self.id)));
+                        }
                     }
                 }
                 _ => {}
@@ -292,7 +281,9 @@ impl Constraint for Increasing {
                     new.intersect_with(Domain::range(0, n - 1));
                     if *new != old {
                         progress = true;
-                        reporter.on_progress(format!("{} is not {} considering decreasing max of {}", reporter.variable_name(*variable), old.difference(*new), self.description));
+                        if reporter.enabled() {
+                            reporter.emit(format!("{} is not {} considering decreasing max of {}", reporter.variable_name(*variable), old.difference(*new), reporter.constraint_name(self.id)));
+                        }
                     }
                 }
                 _ => {}
@@ -316,22 +307,22 @@ impl Constraint for Increasing {
         &self.variable_set
     }
 
-    fn description(&self) -> &String {
-        return &self.description;
+    fn id(&self) -> ConstraintID {
+        self.id
     }
 }
 
 #[derive(Clone)]
 pub struct Equals {
-    description: String,
+    id: ConstraintID,
     variables: VariableSet,
 }
 
 impl Equals {
 
-    pub fn new(description: String, variables: VariableSet) -> Self {
+    pub fn new(id: ConstraintID, variables: VariableSet) -> Self {
         return Equals {
-            description,
+            id,
             variables,
         };
     }
@@ -355,7 +346,9 @@ impl Constraint for Equals {
             new.intersect_with(domain);
             if *new != old {
                 progress = true;
-                reporter.on_progress(format!("{} is not {} since {}", reporter.variable_name(variable), old.difference(*new), self.description));
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
+                }
             }
         }
 
@@ -370,7 +363,7 @@ impl Constraint for Equals {
         &self.variables
     }
 
-    fn description(&self) -> &String {
-        return &self.description;
+    fn id(&self) -> ConstraintID {
+        self.id
     }
 }

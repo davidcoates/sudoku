@@ -162,6 +162,7 @@ class Sudoku(object):
             "constraints": constraints,
             "branch": branch,
             "unique": unique,
+            "breadcrumbs": False,
         }
 
         try:
@@ -175,7 +176,6 @@ class Sudoku(object):
         except subprocess.TimeoutExpired:
             return ("Timed Out", None)
 
-        breadcrumbs = pipe.stderr
         solver_output = json.loads(pipe.stdout)
         result = solver_output["result"]
         duration_ms = solver_output["duration_ms"]

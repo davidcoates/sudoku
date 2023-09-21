@@ -5,10 +5,13 @@ pub type Domains = Vec<Domain>;
 
 pub type Variable = usize;
 pub type VariableSet = BitSet;
+pub type ConstraintID = usize;
 
 pub trait Reporter {
     fn variable_name(&self, variable: Variable) -> &String;
-    fn on_progress(&mut self, comment: String);
+    fn constraint_name(&self, id: ConstraintID) -> &String;
+    fn emit(&mut self, breadcrumb: String);
+    fn enabled(&self) -> bool;
 }
 
 #[derive(Clone,Copy)]

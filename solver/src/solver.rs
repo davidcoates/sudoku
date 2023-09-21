@@ -73,6 +73,9 @@ impl Puzzle {
                             constraints: self.constraints.clone(),
                         };
                         *puzzle.domains.get_mut(*variable).unwrap() = Domain::single(value);
+                        if reporter.enabled() {
+                            reporter.emit(format!("guess {} = {}", reporter.variable_name(*variable), value));
+                        }
                         let result = puzzle.solve_no_branch(reporter, config);
                         match result {
                             Result::Unsolvable => { new_domain.remove(value); },
@@ -81,6 +84,9 @@ impl Puzzle {
                         }
                     }
                     if new_domain != domain {
+                        if reporter.enabled() {
+                            reporter.emit(format!("{} is {} by guessing", reporter.variable_name(*variable), new_domain));
+                        }
                         *self.domains.get_mut(*variable).unwrap() = new_domain;
                         return self.solve(reporter, config);
                     }
