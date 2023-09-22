@@ -1,6 +1,6 @@
 use crate::constraint::*;
 use crate::types::*;
-use crate::constraints::permutation::Permutation;
+use crate::constraints::permutation::*;
 use std::rc::Rc;
 
 #[derive(Clone,Debug)]
@@ -35,46 +35,77 @@ impl Constraint for ConsecutiveSet {
 
     fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
 
-        // Compute the union of all domains
-        let mut cover = Domain::new();
-        for variable in self.variables.iter() {
-            cover.union_with(*domains.get_mut(variable).unwrap());
-        }
+        match simplify_distinct(domains, self.variables) {
+            Some((v1, d1)) => {
 
-        if cover.len() < self.variables.len() {
-            return Result::Stuck;
-        }
+                let mut progress = false;
 
-        // Take the union of (sufficient length) runs in the cover
-        let mut run_cover = Domain::new();
-        for i in cover.min()..=(cover.max() - self.variables.len()) {
-            let run = Domain::range(i, i + self.variables.len());
-            if run.intersection(cover) == run {
-                run_cover.union_with(run);
+                for variable in v1.iter() {
+                    let new = domains.get_mut(variable).unwrap();
+                    let old = *new;
+                    new.intersect_with(d1);
+                    if *new != old {
+                        progress = true;
+                        if reporter.enabled() {
+                            reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
+                        }
+                    }
+                }
+
+                let v2 = self.variables.difference(v1);
+                for variable in v2.iter() {
+                    let new = domains.get_mut(variable).unwrap();
+                    let old = *new;
+                    new.difference_with(d1);
+                    if *new != old {
+                        progress = true;
+                        if reporter.enabled() {
+                            reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
+                        }
+                    }
+                }
+
+                if progress {
+                    return Result::Progress(vec![BoxedConstraint::new(self)]);
+                }
             }
+            None => {}
         }
 
-        if run_cover.len() < self.variables.len() {
+        let min = self.variables.iter().filter_map(|v| domains.get(v).unwrap().value()).min();
+        let max = self.variables.iter().filter_map(|v| domains.get(v).unwrap().value()).max();
+
+        if min.is_none() || max.is_none() {
             return Result::Stuck;
         }
 
-        if run_cover.len() == self.variables.len() {
-            // This just becomes a permutation constraint
-            let constraint = BoxedConstraint::new(Rc::new(Permutation::new(self.id, self.variables, run_cover)));
-            return Result::Progress(vec![constraint]);
+        // The set must contain min..=max
+        // And we can say how much it can be extended either side
+        let included_run = max.unwrap() - min.unwrap() + 1;
+
+        if included_run > self.variables.len() {
+            if reporter.enabled() {
+                reporter.emit(format!("impossible {}", reporter.constraint_name(self.id))); // self.variables, self.variables.iter().map(|v| *domains.get(v).unwrap()).collect::<Vec<_>>() ));
+            }
+            return Result::Unsolvable;
         }
+
+        let excess = self.variables.len() - included_run;
+        let stretch_min = if min.unwrap() >= excess { min.unwrap() - excess } else { 0 };
+        let stretch_max = if usize::MAX - excess >= max.unwrap() { max.unwrap() + excess } else { usize::MAX };
+
+        let cover = Domain::range(stretch_min, stretch_max);
 
         let mut progress = false;
-        if run_cover != cover {
-            for variable in self.variables.iter() {
-                let new = domains.get_mut(variable).unwrap();
-                let old = *new;
-                new.intersect_with(run_cover);
-                if *new != old {
-                    progress = true;
-                    if reporter.enabled() {
-                        reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
-                    }
+
+        for variable in self.variables.iter() {
+            let new = domains.get_mut(variable).unwrap();
+            let old = *new;
+            new.intersect_with(cover);
+            if *new != old {
+                progress = true;
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
                 }
             }
         }

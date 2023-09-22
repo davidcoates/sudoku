@@ -43,10 +43,13 @@ impl BoxedConstraint {
         return self.constraint.as_ref();
     }
 
-    fn check(&self, domains: &mut Domains) -> Option<Result> {
+    fn check(&self, domains: &mut Domains, reporter: &mut dyn Reporter)-> Option<Result> {
         let mut all_solved = true;
         for variable in self.unbox().variables().iter() {
             if domains.get(variable).unwrap().len() == 0 {
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is empty", reporter.variable_name(variable)));
+                }
                 return Some(Result::Unsolvable);
             } else if domains.get(variable).unwrap().len() != 1 {
                 all_solved = false;
@@ -56,6 +59,9 @@ impl BoxedConstraint {
             if self.unbox().check_solved(domains) {
                 return Some(Result::Solved);
             } else {
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is unsolved", reporter.constraint_name(self.unbox().id())));
+                }
                 return Some(Result::Unsolvable);
             }
         }
@@ -63,7 +69,7 @@ impl BoxedConstraint {
     }
 
     pub fn simplify(&self, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
-        match self.check(domains) {
+        match self.check(domains, reporter) {
             Some(result) => result,
             None => self.constraint.clone().simplify(domains, reporter),
         }

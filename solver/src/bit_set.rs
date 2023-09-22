@@ -59,6 +59,10 @@ impl BitSet {
         return self.iter().next().unwrap();
     }
 
+    pub fn value(&self) -> Option<usize> {
+        if self.len() == 1 { Some(self.value_unchecked()) } else { None }
+    }
+
     pub fn min(&self) -> usize {
         if self.bits == 0 {
             panic!("min(0)")
@@ -116,7 +120,9 @@ impl BitSet {
 impl fmt::Display for BitSet {
 
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.len() == 1 {
+        if self.len() == 0 {
+            return write!(f, "<empty>");
+        } else if self.len() == 1 {
             return write!(f, "{}", self.iter().next().unwrap());
         } else {
             return write!(f, "{}",  self.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","));
