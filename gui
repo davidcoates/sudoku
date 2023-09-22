@@ -318,6 +318,10 @@ class SudokuUI(tk.Frame):
         self._canvas.bind("<ButtonRelease-1>", self._on_mouse_released)
         self._canvas.bind("<Motion>", self._on_mouse_moved)
         self._parent.bind("<Key>", self._on_key_pressed)
+        self._parent.bind("<Left>", lambda _: self._move_selection(0, -1))
+        self._parent.bind("<Right>", lambda _: self._move_selection(0, 1))
+        self._parent.bind("<Up>", lambda _: self._move_selection(-1, 0))
+        self._parent.bind("<Down>", lambda _: self._move_selection(1, 0))
         self._parent.bind("<BackSpace>", self._on_backspace_pressed)
 
     def _draw_grid(self):
@@ -386,6 +390,13 @@ class SudokuUI(tk.Frame):
             return (row, col)
         else:
             return None
+
+    def _move_selection(self, x, y):
+        if not self._selection:
+            return
+        (r, c) = self._selection
+        self._selection = ((r + x + 9) % 9, (c + y + 9) % 9)
+        self._draw_cursor()
 
     def _on_mouse_clicked(self, event):
         selection = self._get_cell(event)
@@ -483,24 +494,20 @@ class SudokuUI(tk.Frame):
     def _on_key_pressed(self, event):
         if self._selection is None:
             return
-        if event.char not in "123456789":
+        if event.char == '' or event.char not in "123456789":
             return
         if self.edit_mode is not EditMode.DIGIT:
             return
         (row, col) = self._selection
         self._apply(DigitAction(self._sudoku, row, col, int(event.char)))
-        self._selection = None
         self._draw_sudoku()
-        self._draw_cursor()
 
     def _on_backspace_pressed(self, event):
         if self._selection is None:
             return
         (row, col) = self._selection
         self._apply(DigitAction(self._sudoku, row, col, None))
-        self._selection = None
         self._draw_sudoku()
-        self._draw_cursor()
 
     def _apply(self, action, solve_state=None):
         action.apply()
