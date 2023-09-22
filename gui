@@ -14,6 +14,7 @@ WIDTH = HEIGHT = MARGIN * 2 + SIDE * 9  # Width and height of the whole board
 
 BACKGROUND_COLOR = "white smoke"
 INLAY_COLOR = "linen"
+HEADER_COLOR = "floral white"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
 CURSOR_COLOR = "red"
@@ -186,60 +187,24 @@ class SudokuUI(tk.Frame):
         self._selection = None
         self._pending_line = None
         self._actions = ActionStack()
-        self._initUI()
+        self._init_UI()
 
-    def _set_solve_state(self, solve_state):
-        self._solve_state = solve_state
-        self._solve_label.config(text=f"Solver status: {self._solve_state}")
+    def _make_header(self, parent, text):
+        label = tk.Label(parent,
+                         text=text,
+                         background=HEADER_COLOR,
+                         padx=5,
+                         pady=5,
+                         font=LABEL_FONT)
+        label.pack(side=tk.TOP, fill=tk.BOTH)
 
-    def _create_control_button(self, panel, name, action):
-        image = tk.PhotoImage(file=f"resources/{name}.png").subsample(16, 16)
-        button = tk.Button(panel,
-                           image=image,
-                           width=50,
-                           height=50,
-                           command=action,
-                           background=BUTTON_COLOR)
-        button.pack(side=tk.LEFT, padx=10, pady=5)
-        self._control_images.append(image) # delay GC
+    def _init_edit_panel(self, parent, side):
 
-    def _initUI(self):
-        self._parent.title("Dave's Sudoku Solver")
-        self._parent.configure(background=BACKGROUND_COLOR)
-        self.pack()
+        panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        panel.pack(side=side, pady=10)
 
-        left_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
-        left_panel.pack(side=tk.LEFT)
+        self._make_header(panel, "Edit Tool")
 
-        right_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
-        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH)
-
-        edit_config_panel = tk.Frame(master=right_panel, background=BACKGROUND_COLOR)
-        edit_config_panel.pack(side=tk.LEFT)
-
-        edit_panel = tk.Frame(master=edit_config_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        edit_panel.pack(side=tk.TOP, pady=10)
-
-        config_panel = tk.Frame(master=edit_config_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        config_panel.pack(side=tk.BOTTOM, pady=10)
-
-        self._canvas = tk.Canvas(left_panel,
-                                 width=WIDTH,
-                                 height=HEIGHT,
-                                 background=BACKGROUND_COLOR,
-                                 highlightthickness=0)
-        self._canvas.pack(side=tk.TOP)
-
-        bottom_panel = tk.Frame(master=left_panel, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
-        bottom_panel.pack(side=tk.BOTTOM)
-
-        control_panel = tk.Frame(master=bottom_panel, background=INLAY_COLOR)
-        control_panel.pack(side=tk.TOP)
-
-        info_panel = tk.Frame(master=bottom_panel, background=INLAY_COLOR)
-        info_panel.pack(side=tk.BOTTOM)
-
-        # Edit panel
         edit_mode = tk.IntVar()
         def on_edit_mode_changed():
             self.edit_mode = EditMode(edit_mode.get())
@@ -248,7 +213,7 @@ class SudokuUI(tk.Frame):
                 self._draw_cursor()
 
         for em in EditMode:
-            option = tk.Radiobutton(edit_panel,
+            option = tk.Radiobutton(panel,
                                     text=(em.name.title()),
                                     variable=edit_mode,
                                     value=em.value,
@@ -265,9 +230,15 @@ class SudokuUI(tk.Frame):
             option.pack(anchor=tk.W)
 
 
-        # Config panel
+    def _init_config_panel(self, parent, side):
+
+        panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        panel.pack(side=side, pady=10)
+
+        self._make_header(panel, "Solver Config")
+
         self._branch = tk.BooleanVar()
-        branch_check = tk.Checkbutton(config_panel,
+        branch_check = tk.Checkbutton(panel,
                                       text="Branch",
                                       variable=self._branch,
                                       onvalue=True,
@@ -280,7 +251,7 @@ class SudokuUI(tk.Frame):
                                       font=LABEL_FONT)
         branch_check.pack()
         self._strict = tk.BooleanVar()
-        strict_check = tk.Checkbutton(config_panel,
+        strict_check = tk.Checkbutton(panel,
                                       text="Strict",
                                       variable=self._strict,
                                       onvalue=True,
@@ -290,16 +261,45 @@ class SudokuUI(tk.Frame):
                                       padx=5,
                                       pady=5,
                                       fg="black",
-                                      font=LABEL_FONT)
+                                      font=LABEL_FONT,
+                                      state=tk.DISABLED)
         strict_check.pack()
 
-        # Control panel
+        branch_check.config(command=lambda : strict_check.config(state=(tk.NORMAL if self._branch.get() else tk.DISABLED)))
+
+
+    def _set_solve_state(self, solve_state):
+        self._solve_state = solve_state
+        self._solve_label.config(text=f"Solver status: {self._solve_state}")
+
+    def _init_control_panel(self, parent, side):
+
+        panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        panel.pack(side=side)
+
+        control_panel = tk.Frame(master=panel, background=INLAY_COLOR)
+        control_panel.pack(side=tk.TOP)
+
+        info_panel = tk.Frame(master=panel, background=INLAY_COLOR)
+        info_panel.pack(side=tk.BOTTOM)
+
         self._control_images = []
-        self._create_control_button(control_panel, "reset", self._reset)
-        self._create_control_button(control_panel, "save", self._save)
-        self._create_control_button(control_panel, "undo", self._undo)
-        self._create_control_button(control_panel, "redo", self._redo)
-        self._create_control_button(control_panel, "solve", self._solve)
+        def create_control_button(panel, name, action):
+            image = tk.PhotoImage(file=f"resources/{name}.png").subsample(16, 16)
+            button = tk.Button(panel,
+                               image=image,
+                               width=50,
+                               height=50,
+                               command=action,
+                               background=BUTTON_COLOR)
+            button.pack(side=tk.LEFT, padx=10, pady=5)
+            self._control_images.append(image) # delay GC
+
+        create_control_button(control_panel, "reset", self._reset)
+        create_control_button(control_panel, "save", self._save)
+        create_control_button(control_panel, "undo", self._undo)
+        create_control_button(control_panel, "redo", self._redo)
+        create_control_button(control_panel, "solve", self._solve)
 
         self._solve_label = tk.Label(info_panel,
                                      text="",
@@ -310,6 +310,32 @@ class SudokuUI(tk.Frame):
                                      background=INLAY_COLOR)
         self._solve_label.pack(side=tk.BOTTOM, pady=5)
         self._set_solve_state(None)
+
+
+    def _init_UI(self):
+        self._parent.title("Dave's Sudoku Solver")
+        self._parent.configure(background=BACKGROUND_COLOR)
+        self.pack()
+
+        left_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
+        left_panel.pack(side=tk.LEFT)
+
+        right_panel = tk.Frame(master=self, background=BACKGROUND_COLOR)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH)
+
+        edit_config_panel = tk.Frame(master=right_panel, background=BACKGROUND_COLOR)
+        edit_config_panel.pack(side=tk.LEFT)
+
+        self._canvas = tk.Canvas(left_panel,
+                                 width=WIDTH,
+                                 height=HEIGHT,
+                                 background=BACKGROUND_COLOR,
+                                 highlightthickness=0)
+        self._canvas.pack(side=tk.TOP)
+
+        self._init_edit_panel(edit_config_panel, tk.TOP)
+        self._init_config_panel(edit_config_panel, tk.BOTTOM)
+        self._init_control_panel(left_panel, tk.BOTTOM)
 
         self._draw_grid()
         self._draw_sudoku()
