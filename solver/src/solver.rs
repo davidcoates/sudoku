@@ -93,7 +93,7 @@ impl Puzzle {
                         let result = puzzle.solve_no_branch(reporter, config);
                         match result {
                             Result::Unsolvable => { new_domain.remove(value); },
-                            Result::Solved => if config.strict {} else { *self = puzzle; return Result::Solved; },
+                            Result::Solved => if config.greedy { *self = puzzle; return Result::Solved; } else {},
                             _ => {},
                         }
                     }
@@ -210,7 +210,7 @@ mod tests {
 
         let mut reporter = ReporterImpl{};
         let config = Config{
-            strict: true,
+            greedy: false,
             max_depth: 1,
         };
 

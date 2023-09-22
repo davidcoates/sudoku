@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 
 import argparse
+import pyperclip
 
 from abc import ABC, abstractmethod
 from enum import Enum
 import tkinter as tk
+from tkinter import scrolledtext
 from sudoku import *
 
 MARGIN = 20  # Pixels around the board
 SIDE = 80  # Width of every board cell.
 WIDTH = HEIGHT = MARGIN * 2 + SIDE * 9  # Width and height of the whole board
 
+REPORT_WIDTH=500
+REPORT_HEIGHT=1000
 
 BACKGROUND_COLOR = "white smoke"
-INLAY_COLOR = "linen"
-HEADER_COLOR = "floral white"
+INLAY_COLOR = "floral white"
+HEADER_COLOR = "linen"
 BORDER_COLOR = "black"
 BUTTON_COLOR = "white"
 CURSOR_COLOR = "red"
@@ -230,6 +234,21 @@ class SudokuUI(tk.Frame):
             option.pack(anchor=tk.W)
 
 
+    def _init_check(self, parent, text, variable):
+        check = tk.Checkbutton(parent,
+                               text=text,
+                               variable=variable,
+                               onvalue=True,
+                               offvalue=False,
+                               background=INLAY_COLOR,
+                               highlightthickness=0,
+                               padx=5,
+                               pady=5,
+                               fg="black",
+                               font=LABEL_FONT)
+        check.pack(anchor=tk.W)
+        return check
+
     def _init_config_panel(self, parent, side):
 
         panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -238,34 +257,42 @@ class SudokuUI(tk.Frame):
         self._make_header(panel, "Solver Config")
 
         self._branch = tk.BooleanVar()
-        branch_check = tk.Checkbutton(panel,
-                                      text="Branch",
-                                      variable=self._branch,
-                                      onvalue=True,
-                                      offvalue=False,
-                                      background=INLAY_COLOR,
-                                      highlightthickness=0,
-                                      padx=5,
-                                      pady=5,
-                                      fg="black",
-                                      font=LABEL_FONT)
-        branch_check.pack()
-        self._strict = tk.BooleanVar()
-        strict_check = tk.Checkbutton(panel,
-                                      text="Strict",
-                                      variable=self._strict,
-                                      onvalue=True,
-                                      offvalue=False,
-                                      background=INLAY_COLOR,
-                                      highlightthickness=0,
-                                      padx=5,
-                                      pady=5,
-                                      fg="black",
-                                      font=LABEL_FONT,
-                                      state=tk.DISABLED)
-        strict_check.pack()
+        branch_check = self._init_check(panel, "Branch", self._branch)
 
-        branch_check.config(command=lambda : strict_check.config(state=(tk.NORMAL if self._branch.get() else tk.DISABLED)))
+        self._greedy = tk.BooleanVar()
+        greedy_check = self._init_check(panel, "Greedy", self._greedy)
+        greedy_check.config(state=tk.DISABLED)
+
+        self._trace = tk.BooleanVar()
+        trace_check = self._init_check(panel, "Trace", self._trace)
+        trace_check.config(state=tk.DISABLED)
+
+        self._max_depth = tk.IntVar()
+        self._max_depth.set(1)
+
+        max_depth_label = tk.Label(panel,
+                                   text="Depth:",
+                                   background=INLAY_COLOR,
+                                   font=LABEL_FONT,
+                                   state=tk.DISABLED)
+        max_depth_label.pack(side=tk.LEFT, padx=5, pady=5)
+
+        max_depth_input = tk.OptionMenu(panel, self._max_depth, 1, 2, 3)
+        max_depth_input.config(background=INLAY_COLOR,
+                               highlightthickness=0,
+                               fg="black",
+                               font=LABEL_FONT,
+                               state=tk.DISABLED)
+        max_depth_input.pack(side=tk.RIGHT, padx=5, pady=5)
+
+        def toggle_state():
+            state = tk.NORMAL if self._branch.get() else tk.DISABLED
+            greedy_check.config(state=state)
+            trace_check.config(state=state)
+            max_depth_label.config(state=state)
+            max_depth_input.config(state=state)
+
+        branch_check.config(command=toggle_state)
 
 
     def _set_solve_state(self, solve_state):
@@ -300,6 +327,7 @@ class SudokuUI(tk.Frame):
         create_control_button(control_panel, "undo", self._undo)
         create_control_button(control_panel, "redo", self._redo)
         create_control_button(control_panel, "solve", self._solve)
+        create_control_button(control_panel, "link", self._link)
 
         self._solve_label = tk.Label(info_panel,
                                      text="",
@@ -547,8 +575,21 @@ class SudokuUI(tk.Frame):
         self._draw_sudoku()
 
     def _solve(self):
-        (solve_state, board) = self._sudoku.solve(self._branch.get(), self._strict.get())
-        # TODO show breadcrumbs in gui
+        (solve_state, board, breadcrumbs) = self._sudoku.solve(
+            branch=self._branch.get(),
+            greedy=self._greedy.get(),
+            max_depth=self._max_depth.get(),
+            trace=self._trace.get())
+
+        if breadcrumbs:
+            popup = tk.Toplevel(self._parent)
+            popup.geometry(f"{REPORT_WIDTH}x{REPORT_HEIGHT}")
+            popup.title("Solver Report")
+            popup_text = scrolledtext.ScrolledText(popup, font=LABEL_FONT, width=REPORT_WIDTH, height=REPORT_HEIGHT)
+            popup_text.insert(tk.INSERT, breadcrumbs)
+            popup_text.configure(state="disabled")
+            popup_text.pack(fill=tk.BOTH)
+
         if board is None:
             self._set_solve_state(solve_state)
             return
@@ -570,6 +611,9 @@ class SudokuUI(tk.Frame):
         self._actions.redo()
         self._set_solve_state(None)
         self._draw_sudoku()
+
+    def _link(self):
+        pyperclip.copy(self._sudoku.to_url())
 
 
 if __name__ == '__main__':

@@ -104,9 +104,7 @@ class Sudoku(object):
     def constraints(self):
         return self._constraints
 
-    def solve(self, branch, strict):
-
-        print(self.to_url())
+    def solve(self, branch, greedy, max_depth, trace):
 
         domains = {}
         for r in range(9):
@@ -173,9 +171,9 @@ class Sudoku(object):
         solver_input = {
             "domains": domains,
             "constraints": constraints,
-            "strict": strict,
-            "breadcrumbs": False,
-            "max_depth": 1 if branch else 0,
+            "greedy": greedy,
+            "breadcrumbs": trace,
+            "max_depth": max_depth if branch else 0,
         }
 
         try:
@@ -198,5 +196,5 @@ class Sudoku(object):
                 [r, c] = variable.split(':')
                 r, c = int(r) - 1, int(c) - 1
                 board[r][c] = domain[0]
-        return (f"{result.title()} ({duration_ms}ms)", board)
+        return (f"{result.title()} ({duration_ms}ms)", board, pipe.stderr)
 

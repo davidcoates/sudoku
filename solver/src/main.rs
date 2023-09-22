@@ -118,7 +118,7 @@ fn main() {
     };
 
     let config = Config{
-        strict: input["strict"].as_bool().unwrap(),
+        greedy: input["greedy"].as_bool().unwrap(),
         max_depth: input["max_depth"].as_u64().unwrap(),
     };
 
