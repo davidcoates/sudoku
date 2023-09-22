@@ -118,6 +118,7 @@ impl Puzzle {
 mod tests {
 
     use super::*;
+    use crate::constraints::*;
     use std::rc::Rc;
 
     struct ReporterImpl {}

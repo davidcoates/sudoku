@@ -2,6 +2,7 @@ mod bit_set;
 mod solver;
 mod types;
 mod constraint;
+mod constraints;
 
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -10,6 +11,7 @@ use std::time::Instant;
 use types::*;
 use constraint::*;
 use solver::*;
+use constraints::*;
 
 use serde_json::json;
 
