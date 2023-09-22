@@ -1,3 +1,5 @@
+#![feature(assert_matches)]
+
 mod bit_set;
 mod solver;
 mod types;

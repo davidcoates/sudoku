@@ -3,6 +3,7 @@ use std::rc::Rc;
 use crate::types::*;
 use crate::bit_set::*;
 
+#[derive(Debug)]
 pub enum Result {
     Unsolvable,
     Solved,
@@ -10,7 +11,7 @@ pub enum Result {
     Progress(Vec<BoxedConstraint>)
 }
 
-pub trait Constraint {
+pub trait Constraint : std::fmt::Debug {
     fn variables(&self) -> &VariableSet;
     fn id(&self) -> ConstraintID;
 
@@ -24,7 +25,7 @@ pub trait Constraint {
 
 pub type Constraints = Vec<BoxedConstraint>;
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct BoxedConstraint {
     constraint: Rc<dyn Constraint>,
 }
@@ -104,7 +105,7 @@ fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporte
 }
 
 // Distinct digits covering a domain
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Permutation {
     id: ConstraintID,
     variables: VariableSet,
@@ -238,7 +239,7 @@ impl Constraint for Permutation {
 
 
 // Strictly increasing digits
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Increasing {
     id: ConstraintID,
     variables: Vec<Variable>,
@@ -348,7 +349,7 @@ impl Constraint for Increasing {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct Equals {
     id: ConstraintID,
     variables: VariableSet,
@@ -419,7 +420,7 @@ impl Constraint for Equals {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct ConsecutiveSet {
     id: ConstraintID,
     variables: VariableSet,

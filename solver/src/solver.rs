@@ -113,3 +113,137 @@ impl Puzzle {
     }
 
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use std::rc::Rc;
+    use core::assert_matches::assert_matches;
+
+    struct ReporterImpl {}
+
+    impl Reporter for ReporterImpl {
+
+        fn variable_name(&self, _id: Variable) -> &String {
+            panic!("unimplemented");
+        }
+
+        fn constraint_name(&self, _id: ConstraintID) -> &String {
+            panic!("unimplemented");
+        }
+
+        fn emit(&mut self, _breadcrumb: String) {
+            panic!("unimplemented");
+        }
+
+        fn enabled(&self) -> bool {
+            false
+        }
+    }
+
+    fn encode(r: usize, c: usize) -> usize {
+        r * 9 + c
+    }
+
+/*
+    fn decode(rc: usize) -> (usize, usize) {
+        (rc / 9, rc % 9)
+    }
+*/
+
+    fn sudoku_domains_from_grid(grid: [[usize; 9]; 9]) -> Domains {
+        let mut domains = Domains::new();
+        for r in 0..9 {
+            for c in 0..9 {
+                if grid[r][c] == 0 {
+                    domains.push(Domain::range(1, 9));
+                } else {
+                    domains.push(Domain::single(grid[r][c]));
+                }
+            }
+        }
+        return domains;
+    }
+
+    fn sudoku_constraints() -> Constraints {
+        let mut constraints = Constraints::new();
+        let domain = Domain::range(1, 9);
+        for r in 0..9 {
+            let mut variables = VariableSet::new();
+            for c in 0..9 {
+                variables.insert(encode(r, c));
+            }
+            constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(0, variables, domain))));
+        }
+        for r in 0..9 {
+            let mut variables = VariableSet::new();
+            for c in 0..9 {
+                variables.insert(encode(c, r));
+            }
+            constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(0, variables, domain))));
+        }
+        for r in 0..3 {
+            for c in 0..3 {
+                let mut variables = VariableSet::new();
+                for i in 0..3 {
+                    for j in 0..3 {
+                        variables.insert(encode(r*3 + i, c*3 + j));
+                    }
+                }
+                constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(0, variables, domain))));
+            }
+        }
+        return constraints;
+    }
+
+    fn check_grid(domains: Domains, expected: [[usize; 9]; 9]) {
+        for r in 0..9 {
+            for c in 0..9 {
+                assert_eq!(*domains.get(encode(r, c)).unwrap(), Domain::single(expected[r][c]));
+            }
+        }
+    }
+
+    #[test]
+    fn test_simple_sudoku() {
+
+        let mut reporter = ReporterImpl{};
+        let config = Config{
+            strict: true,
+            max_depth: 1,
+        };
+
+        let domains = sudoku_domains_from_grid([
+            [0, 0, 0, 1, 0, 2, 0, 0, 0],
+            [0, 6, 0, 0, 0, 0, 0, 7, 0],
+            [0, 0, 8, 0, 0, 0, 9, 0, 0],
+            [4, 0, 0, 0, 0, 0, 0, 0, 3],
+            [0, 5, 0, 0, 0, 7, 0, 0, 0],
+            [2, 0, 0, 0, 8, 0, 0, 0, 1],
+            [0, 0, 9, 0, 0, 0, 8, 0, 5],
+            [0, 7, 0, 0, 0, 0, 0, 6, 0],
+            [0, 0, 0, 3, 0, 4, 0, 0, 0],
+        ]);
+        let constraints = sudoku_constraints();
+
+        let mut puzzle = Puzzle::new(domains, constraints);
+        let result = puzzle.solve(&mut reporter, config);
+        assert_matches!(result, Result::Solved);
+
+        let expected = [
+            [9, 3, 4, 1, 7, 2, 6, 5, 8],
+            [5, 6, 1, 9, 4, 8, 3, 7, 2],
+            [7, 2, 8, 6, 3, 5, 9, 1, 4],
+            [4, 1, 7, 2, 6, 9, 5, 8, 3],
+            [8, 5, 3, 4, 1, 7, 2, 9, 6],
+            [2, 9, 6, 5, 8, 3, 7, 4, 1],
+            [1, 4, 9, 7, 2, 6, 8, 3, 5],
+            [3, 7, 2, 8, 5, 1, 4, 6, 9],
+            [6, 8, 5, 3, 9, 4, 1, 2, 7],
+        ];
+
+        check_grid(puzzle.domains, expected);
+    }
+
+}
