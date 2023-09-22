@@ -119,7 +119,6 @@ mod tests {
 
     use super::*;
     use std::rc::Rc;
-    use core::assert_matches::assert_matches;
 
     struct ReporterImpl {}
 
@@ -229,7 +228,7 @@ mod tests {
 
         let mut puzzle = Puzzle::new(domains, constraints);
         let result = puzzle.solve(&mut reporter, config);
-        assert_matches!(result, Result::Solved);
+        assert!(matches!(result, Result::Solved));
 
         let expected = [
             [9, 3, 4, 1, 7, 2, 6, 5, 8],
