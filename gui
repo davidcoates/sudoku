@@ -326,8 +326,8 @@ class SudokuUI(tk.Frame):
         create_control_button(control_panel, "save", self._save)
         create_control_button(control_panel, "undo", self._undo)
         create_control_button(control_panel, "redo", self._redo)
-        create_control_button(control_panel, "solve", self._solve)
         create_control_button(control_panel, "link", self._link)
+        create_control_button(control_panel, "solve", self._solve)
 
         self._solve_label = tk.Label(info_panel,
                                      text="",
@@ -586,6 +586,8 @@ class SudokuUI(tk.Frame):
             popup.geometry(f"{REPORT_WIDTH}x{REPORT_HEIGHT}")
             popup.title("Solver Report")
             popup_text = scrolledtext.ScrolledText(popup, font=LABEL_FONT, width=REPORT_WIDTH, height=REPORT_HEIGHT)
+            lines = breadcrumbs.count("\n")
+            popup_text.insert(tk.INSERT, f"solver returned {lines} lines\n")
             popup_text.insert(tk.INSERT, breadcrumbs)
             popup_text.configure(state="disabled")
             popup_text.pack(fill=tk.BOTH)
