@@ -204,10 +204,10 @@ class SudokuUI(tk.Frame):
         label.pack(side=tk.TOP, fill=tk.BOTH)
 
     def _reload_global_constraints(self):
-        if self._sudoku.constraints.anti_knight:
-            self._anti_knight_check.select()
+        if self._sudoku.constraints.antiknight:
+            self._antiknight_check.select()
         else:
-            self._anti_knight_check.deselect()
+            self._antiknight_check.deselect()
 
     def _init_global_panel(self, parent, side):
 
@@ -216,13 +216,13 @@ class SudokuUI(tk.Frame):
 
         self._make_header(panel, "Global")
 
-        self._anti_knight = tk.BooleanVar()
-        def toggle_anti_knight():
-            print(self._anti_knight.get())
-            self._sudoku.constraints.anti_knight = self._anti_knight.get()
-        self._anti_knight_check = self._init_check(panel, "AntiKnight", self._anti_knight)
-        self._anti_knight_check.config(command=toggle_anti_knight)
-        self._anti_knight_check.pack()
+        self._antiknight = tk.BooleanVar()
+        def toggle_antiknight():
+            print(self._antiknight.get())
+            self._sudoku.constraints.antiknight = self._antiknight.get()
+        self._antiknight_check = self._init_check(panel, "Antiknight", self._antiknight)
+        self._antiknight_check.config(command=toggle_antiknight)
+        self._antiknight_check.pack()
 
         self._reload_global_constraints()
 

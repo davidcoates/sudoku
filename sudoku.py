@@ -23,7 +23,7 @@ class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
-    anti_knight: bool = False
+    antiknight: bool = False
 
 class Sudoku(object):
     """
@@ -42,7 +42,7 @@ class Sudoku(object):
             rules.append("Digits on a yellow line form a palindrome.")
         if self._constraints.renbans:
             rules.append("Digits on a purple line form a consecutive set.")
-        if self._constraints.anti_knight:
+        if self._constraints.antiknight:
             rules.append("Digits a knights move away can not be the same.")
         return " ".join(rules)
 
@@ -58,7 +58,7 @@ class Sudoku(object):
             "palindrome": [],
             "line": []
         }
-        if self.constraints.anti_knight:
+        if self.constraints.antiknight:
             js["antiknight"] = {}
         for r, row in enumerate(self._board):
             for c, digit in enumerate(row):
@@ -176,7 +176,7 @@ class Sudoku(object):
                 "description": "renban"
             })
 
-        if self._constraints.anti_knight:
+        if self._constraints.antiknight:
             knight_moves = set()
             def try_knight_move(r, c, x, y):
                 if 0 <= r + x < 9 and 0 <= c + y < 9:
