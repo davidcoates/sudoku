@@ -24,6 +24,8 @@ class Constraints:
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
     antiknight: bool = False
+    antibishop: bool = False
+    antiking: bool = False
 
 class Sudoku(object):
     """
@@ -43,10 +45,14 @@ class Sudoku(object):
         if self._constraints.renbans:
             rules.append("Digits on a purple line form a consecutive set.")
         if self._constraints.antiknight:
-            rules.append("Digits a knights move away can not be the same.")
+            rules.append("Digits a knight's move away can not be the same.")
+        if self._constraints.antibishop:
+            rules.append("Digits a bishop's move away can not be the same.")
+        if self._constraints.antiking:
+            rules.append("Digits a king's move away can not be the same.")
         return " ".join(rules)
 
-    # TODO renban
+    # TODO renban, antibishop, antiknight
     def to_json(self):
         js = {
             "title": self._sudoku_name,
@@ -176,28 +182,60 @@ class Sudoku(object):
                 "description": "renban"
             })
 
-        if self._constraints.antiknight:
-            knight_moves = set()
-            def try_knight_move(r, c, x, y):
-                if 0 <= r + x < 9 and 0 <= c + y < 9:
-                    knight_moves.add(frozenset({(r, c), (r + x, c + y)}))
-            for r in range(9):
-                for c in range(9):
-                    try_knight_move(r, c, -2, -1)
-                    try_knight_move(r, c, +2, +1)
-                    try_knight_move(r, c, +2, -1)
-                    try_knight_move(r, c, -2, +1)
-                    try_knight_move(r, c, -1, -2)
-                    try_knight_move(r, c, +1, +2)
-                    try_knight_move(r, c, +1, -2)
-                    try_knight_move(r, c, -1, +2)
-            for knight_move in knight_moves:
-                variables = [ f"{r+1}:{c+1}" for (r, c) in knight_move ]
+        # TODO should avoid duplicate constraints
+
+        moves = set()
+        def try_move(r, c, x, y):
+            if 0 <= r + x < 9 and 0 <= c + y < 9:
+                moves.add(frozenset({(r, c), (r + x, c + y)}))
+
+        def register_moves(description):
+            for move in moves:
+                variables = [ f"{r+1}:{c+1}" for (r, c) in moves ]
                 constraints.append({
                     "type": "NotEquals",
                     "variables": variables,
-                    "description": "antiknight"
+                    "description": description
                 })
+            moves.clear()
+
+        if self._constraints.antiknight:
+            for r in range(9):
+                for c in range(9):
+                    try_move(r, c, -2, -1)
+                    try_move(r, c, +2, +1)
+                    try_move(r, c, +2, -1)
+                    try_move(r, c, -2, +1)
+                    try_move(r, c, -1, -2)
+                    try_move(r, c, +1, +2)
+                    try_move(r, c, +1, -2)
+                    try_move(r, c, -1, +2)
+        register_moves("antiknight")
+
+        if self._constraints.antibishop:
+            for r in range(9):
+                for c in range(9):
+                    for i in range(9):
+                        if i == 0:
+                            continue
+                        try_move(r, c, -i, -i)
+                        try_move(r, c, +i, +i)
+                        try_move(r, c, -i, +i)
+                        try_move(r, c, +i, -i)
+        register_moves("antibishop")
+
+        if self._constraints.antiking:
+            for r in range(9):
+                for c in range(9):
+                    try_move(r, c, -1, -1)
+                    try_move(r, c,  0, -1)
+                    try_move(r, c, +1, -1)
+                    try_move(r, c, -1,  0)
+                    try_move(r, c, +1,  0)
+                    try_move(r, c, -1, +1)
+                    try_move(r, c,  0, +1)
+                    try_move(r, c, +1, +1)
+        register_moves("antiking")
 
         solver_input = {
             "domains": domains,

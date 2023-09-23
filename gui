@@ -204,10 +204,9 @@ class SudokuUI(tk.Frame):
         label.pack(side=tk.TOP, fill=tk.BOTH)
 
     def _reload_global_constraints(self):
-        if self._sudoku.constraints.antiknight:
-            self._antiknight_check.select()
-        else:
-            self._antiknight_check.deselect()
+        self._antiknight_check.select() if self._sudoku.constraints.antiknight else self._antiknight_check.deselect()
+        self._antibishop_check.select() if self._sudoku.constraints.antibishop else self._antibishop_check.deselect()
+        self._antiking_check.select() if self._sudoku.constraints.antiking else self._antiking_check.deselect()
 
     def _init_global_panel(self, parent, side):
 
@@ -218,11 +217,24 @@ class SudokuUI(tk.Frame):
 
         self._antiknight = tk.BooleanVar()
         def toggle_antiknight():
-            print(self._antiknight.get())
             self._sudoku.constraints.antiknight = self._antiknight.get()
         self._antiknight_check = self._init_check(panel, "Antiknight", self._antiknight)
         self._antiknight_check.config(command=toggle_antiknight)
         self._antiknight_check.pack()
+
+        self._antibishop = tk.BooleanVar()
+        def toggle_antibishop():
+            self._sudoku.constraints.antibishop = self._antibishop.get()
+        self._antibishop_check = self._init_check(panel, "Antibishop", self._antibishop)
+        self._antibishop_check.config(command=toggle_antibishop)
+        self._antibishop_check.pack()
+
+        self._antiking = tk.BooleanVar()
+        def toggle_antiking():
+            self._sudoku.constraints.antiking = self._antiking.get()
+        self._antiking_check = self._init_check(panel, "Antiking", self._antiking)
+        self._antiking_check.config(command=toggle_antiking)
+        self._antiking_check.pack()
 
         self._reload_global_constraints()
 
