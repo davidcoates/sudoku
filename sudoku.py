@@ -23,6 +23,7 @@ class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
+    anti_knight: bool = False
 
 class Sudoku(object):
     """
@@ -39,8 +40,13 @@ class Sudoku(object):
             rules.append("Digits on a thermometer strictly increase from the bulb end.")
         if self._constraints.palindromes:
             rules.append("Digits on a yellow line form a palindrome.")
+        if self._constraints.renbans:
+            rules.append("Digits on a purple line form a consecutive set.")
+        if self._constraints.anti_knight:
+            rules.append("Digits a knights move away can not be the same.")
         return " ".join(rules)
 
+    # TODO renban
     def to_json(self):
         js = {
             "title": self._sudoku_name,
@@ -52,6 +58,8 @@ class Sudoku(object):
             "palindrome": [],
             "line": []
         }
+        if self.constraints.anti_knight:
+            js["antiknight"] = {}
         for r, row in enumerate(self._board):
             for c, digit in enumerate(row):
                 if digit is not None:
@@ -167,6 +175,29 @@ class Sudoku(object):
                 "variables": variables,
                 "description": "renban"
             })
+
+        if self._constraints.anti_knight:
+            knight_moves = set()
+            def try_knight_move(r, c, x, y):
+                if 0 <= r + x < 9 and 0 <= c + y < 9:
+                    knight_moves.add(frozenset({(r, c), (r + x, c + y)}))
+            for r in range(9):
+                for c in range(9):
+                    try_knight_move(r, c, -2, -1)
+                    try_knight_move(r, c, +2, +1)
+                    try_knight_move(r, c, +2, -1)
+                    try_knight_move(r, c, -2, +1)
+                    try_knight_move(r, c, -1, -2)
+                    try_knight_move(r, c, +1, +2)
+                    try_knight_move(r, c, +1, -2)
+                    try_knight_move(r, c, -1, +2)
+            for knight_move in knight_moves:
+                variables = [ f"{r+1}:{c+1}" for (r, c) in knight_move ]
+                constraints.append({
+                    "type": "NotEquals",
+                    "variables": variables,
+                    "description": "antiknight"
+                })
 
         solver_input = {
             "domains": domains,

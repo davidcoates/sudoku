@@ -66,14 +66,15 @@ fn main() {
     for constraint in input["constraints"].as_array().unwrap() {
         let id = constraint_id_to_name.len();
         constraint_id_to_name.push(constraint["description"].as_str().unwrap().to_string());
+        let mut variables_ordered = Vec::new();
+        let mut variables = VariableSet::new();
+        for variable in constraint["variables"].as_array().unwrap() {
+            let variable = variable.as_str().unwrap();
+            variables.insert(variable_name_to_id[variable]);
+            variables_ordered.push(variable_name_to_id[variable])
+        }
         match constraint["type"].as_str().unwrap() {
             "Permutation" => {
-                let mut variables = VariableSet::new();
-                for variable in constraint["variables"].as_array().unwrap() {
-                    let variable = variable.as_str().unwrap();
-                    variables.insert(variable_name_to_id[variable]);
-                }
-
                 let mut domain = Domain::new();
                 for digit in constraint["domain"].as_array().unwrap() {
                     domain.insert(usize::try_from(digit.as_u64().unwrap()).unwrap());
@@ -82,28 +83,15 @@ fn main() {
                 constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(id, variables, domain))));
             }
             "Increasing" => {
-                let mut variables = Vec::new();
-                for variable in constraint["variables"].as_array().unwrap() {
-                    let variable = variable.as_str().unwrap();
-                    variables.push(variable_name_to_id[variable]);
-                }
-
-                constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(id, variables))));
+                constraints.push(BoxedConstraint::new(Rc::new(Increasing::new(id, variables_ordered))));
             }
             "Equals" => {
-                let mut variables = VariableSet::new();
-                for variable in constraint["variables"].as_array().unwrap() {
-                    let variable = variable.as_str().unwrap();
-                    variables.insert(variable_name_to_id[variable]);
-                }
                 constraints.push(BoxedConstraint::new(Rc::new(Equals::new(id, variables))));
             }
+            "NotEquals" => {
+                constraints.push(BoxedConstraint::new(Rc::new(NotEquals::new(id, variables))));
+            }
             "ConsecutiveSet" => {
-                let mut variables = VariableSet::new();
-                for variable in constraint["variables"].as_array().unwrap() {
-                    let variable = variable.as_str().unwrap();
-                    variables.insert(variable_name_to_id[variable]);
-                }
                 constraints.push(BoxedConstraint::new(Rc::new(ConsecutiveSet::new(id, variables))));
             }
             _ => panic!("unknown type"),

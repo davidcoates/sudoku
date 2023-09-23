@@ -203,6 +203,30 @@ class SudokuUI(tk.Frame):
                          font=LABEL_FONT)
         label.pack(side=tk.TOP, fill=tk.BOTH)
 
+    def _reload_global_constraints(self):
+        if self._sudoku.constraints.anti_knight:
+            self._anti_knight_check.select()
+        else:
+            self._anti_knight_check.deselect()
+
+    def _init_global_panel(self, parent, side):
+
+        panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        panel.pack(side=side, pady=10)
+
+        self._make_header(panel, "Global")
+
+        self._anti_knight = tk.BooleanVar()
+        def toggle_anti_knight():
+            print(self._anti_knight.get())
+            self._sudoku.constraints.anti_knight = self._anti_knight.get()
+        self._anti_knight_check = self._init_check(panel, "AntiKnight", self._anti_knight)
+        self._anti_knight_check.config(command=toggle_anti_knight)
+        self._anti_knight_check.pack()
+
+        self._reload_global_constraints()
+
+
     def _init_edit_panel(self, parent, side):
 
         panel = tk.Frame(master=parent, background=INLAY_COLOR, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -363,8 +387,9 @@ class SudokuUI(tk.Frame):
                                  highlightthickness=0)
         self._canvas.pack(side=tk.TOP)
 
-        self._init_edit_panel(edit_config_panel, tk.TOP)
         self._init_config_panel(edit_config_panel, tk.BOTTOM)
+        self._init_edit_panel(edit_config_panel, tk.BOTTOM)
+        self._init_global_panel(edit_config_panel, tk.BOTTOM)
         self._init_control_panel(left_panel, tk.BOTTOM)
 
         self._draw_grid()
@@ -575,6 +600,7 @@ class SudokuUI(tk.Frame):
         self._sudoku.reset()
         self._set_solve_state(None)
         self._draw_sudoku()
+        self._reload_global_constraints()
 
     def _solve(self):
         (solve_state, board, breadcrumbs) = self._sudoku.solve(
