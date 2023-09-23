@@ -199,6 +199,7 @@ class SudokuUI(tk.Frame):
                          background=HEADER_COLOR,
                          padx=5,
                          pady=5,
+                         fg="black",
                          font=LABEL_FONT)
         label.pack(side=tk.TOP, fill=tk.BOTH)
 
@@ -273,6 +274,7 @@ class SudokuUI(tk.Frame):
         max_depth_label = tk.Label(panel,
                                    text="Depth:",
                                    background=INLAY_COLOR,
+                                   fg="black",
                                    font=LABEL_FONT,
                                    state=tk.DISABLED)
         max_depth_label.pack(side=tk.LEFT, padx=5, pady=5)
