@@ -24,7 +24,6 @@ class Constraints:
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
     antiknight: bool = False
-    antibishop: bool = False
     antiking: bool = False
 
 class Sudoku(object):
@@ -46,13 +45,11 @@ class Sudoku(object):
             rules.append("Digits on a purple line form a consecutive set.")
         if self._constraints.antiknight:
             rules.append("Digits a knight's move away can not be the same.")
-        if self._constraints.antibishop:
-            rules.append("Digits a bishop's move away can not be the same.")
         if self._constraints.antiking:
             rules.append("Digits a king's move away can not be the same.")
         return " ".join(rules)
 
-    # TODO renban, antibishop, antiknight
+    # TODO renban
     def to_json(self):
         js = {
             "title": self._sudoku_name,
@@ -66,6 +63,8 @@ class Sudoku(object):
         }
         if self.constraints.antiknight:
             js["antiknight"] = {}
+        if self.constraints.antiking:
+            js["antiking"] = {}
         for r, row in enumerate(self._board):
             for c, digit in enumerate(row):
                 if digit is not None:
@@ -191,7 +190,7 @@ class Sudoku(object):
 
         def register_moves(description):
             for move in moves:
-                variables = [ f"{r+1}:{c+1}" for (r, c) in moves ]
+                variables = [ f"{r+1}:{c+1}" for (r, c) in move ]
                 constraints.append({
                     "type": "NotEquals",
                     "variables": variables,
@@ -211,18 +210,6 @@ class Sudoku(object):
                     try_move(r, c, +1, -2)
                     try_move(r, c, -1, +2)
         register_moves("antiknight")
-
-        if self._constraints.antibishop:
-            for r in range(9):
-                for c in range(9):
-                    for i in range(9):
-                        if i == 0:
-                            continue
-                        try_move(r, c, -i, -i)
-                        try_move(r, c, +i, +i)
-                        try_move(r, c, -i, +i)
-                        try_move(r, c, +i, -i)
-        register_moves("antibishop")
 
         if self._constraints.antiking:
             for r in range(9):
