@@ -5,6 +5,7 @@ import json
 import lzstring
 from dataclasses import dataclass, field
 from typing import *
+from enum import Enum
 
 @dataclass
 class Thermometer:
@@ -23,11 +24,21 @@ class Whisper:
     path: list[(int, int)]
 
 @dataclass
+class Kropki:
+    class Color(Enum):
+        WHITE = 0
+        BLACK = 1
+    color: Color
+    cell1: (int, int) # cell1 should compare less than cell2
+    cell2: (int, int)
+
+@dataclass
 class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
     whispers: list[Whisper] = field(default_factory=list)
+    kropkis: list[Kropki] = field(default_factory=list)
     antiknight: bool = False
     antiking: bool = False
 
@@ -50,13 +61,15 @@ class Sudoku(object):
             rules.append("Digits on a purple line form a consecutive set.")
         if self._constraints.whispers:
             rules.append("Consecutive cells on a green line have a difference of at least 5.")
+        if self._constraints.kropkis:
+            rules.append("White dots indicate consecutive digits. Black dots indicate a 1:2 ratio.")
         if self._constraints.antiknight:
             rules.append("Digits a knight's move away can not be the same.")
         if self._constraints.antiking:
             rules.append("Digits a king's move away can not be the same.")
         return " ".join(rules)
 
-    # TODO renban
+    # TODO renban, kropkis
     def to_json(self):
         js = {
             "title": self._sudoku_name,
@@ -196,6 +209,8 @@ class Sudoku(object):
                 "description": "whisper",
                 "threshold": 5,
             })
+
+        # TODO kropkis
 
         # TODO should avoid duplicate constraints
 

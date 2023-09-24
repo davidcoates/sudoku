@@ -68,7 +68,6 @@ class Line():
         return Line(path, Line.Style.SIMPLE, "green2")
 
 
-
 class Action(ABC):
 
     @abstractmethod
@@ -171,12 +170,32 @@ class WhisperAction(LineAction):
     def _lines(self):
         return self._sudoku.constraints.whispers
 
+
+class KropkiAction(Action):
+
+    def __init__(self, sudoku, kropki):
+        self._sudoku = sudoku
+        self._kropki = kropki
+
+    def apply(self):
+        kropkis = self._sudoku.constraints.kropkis
+        if self._kropki in kropkis:
+            kropkis.remove(self._kropki)
+        else:
+            kropkis.append(self._kropki)
+
+    def undo(self):
+        self.apply()
+
+
 class EditMode(Enum):
     DIGIT = 0
     THERMOMETER = 1
     PALINDROME = 2
     RENBAN = 3
     GERMAN_WHISPER = 4
+    WHITE_KROPKI = 5
+    BLACK_KROPKI = 6
 
 def parse_arguments():
     """
@@ -451,6 +470,8 @@ class SudokuUI(tk.Frame):
             self._draw_line(Line.renban(line.path))
         for line in self._sudoku.constraints.whispers:
             self._draw_line(Line.whisper(line.path))
+        for kropki in self._sudoku.constraints.kropkis:
+            self._draw_kropki(kropki)
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -490,6 +511,27 @@ class SudokuUI(tk.Frame):
         else:
             return None
 
+    def _get_edge(self, event):
+        x, y = event.x, event.y
+        if (MARGIN < x < WIDTH - MARGIN and MARGIN < y < HEIGHT - MARGIN):
+            (r0, c0) = ((y - MARGIN) // SIDE, (x - MARGIN) // SIDE)
+            (ox, oy) = ((c0 + 0.5) * SIDE + MARGIN, (r0 + 0.5) * SIDE + MARGIN)
+            d1 = ((event.y - oy) + (event.x - ox)) > 0
+            d2 = ((event.y - oy) - (event.x - ox)) > 0
+            if d1 and d2:
+                (r1, c1) = (r0 + 1, c0)
+            elif d1 and not d2:
+                (r1, c1) = (r0, c0 + 1)
+            elif d2 and not d1:
+                (r1, c1) = (r0, c0 - 1)
+            else:
+                (r1, c1) = (r0 - 1, c0)
+            if 0 <= r1 < 9 and 0 <= c1 < 9:
+                e0 = (r0, c0)
+                e1 = (r1, c1)
+                return (e0, e1) if e0 < e1 else (e1, e0)
+        return None
+
     def _move_selection(self, x, y):
         if not self._selection:
             return
@@ -498,28 +540,37 @@ class SudokuUI(tk.Frame):
         self._draw_cursor()
 
     def _on_mouse_clicked(self, event):
-        selection = self._get_cell(event)
-        if selection is not None:
+
+        if self.edit_mode == EditMode.WHITE_KROPKI or self.edit_mode == EditMode.BLACK_KROPKI:
+            edge = self._get_edge(event)
+            if not edge:
+                return
+            (cell1, cell2) = edge
+            color = Kropki.Color.WHITE if self.edit_mode == EditMode.WHITE_KROPKI else Kropki.Color.BLACK
+            self._apply(KropkiAction(self._sudoku, Kropki(color, cell1, cell2)))
+        else:
+            # All the rest require clicking on a specific cell
+            selection = self._get_cell(event)
             if self.edit_mode == EditMode.DIGIT:
-                # if cell was selected already - deselect it
-                if selection == self._selection:
+                # If we click outside the canvas or on an already selected cell, then clear the selection
+                if selection is None or selection == self._selection:
                     self._selection = None
                 else:
                     self._selection = selection
-            elif self.edit_mode == EditMode.THERMOMETER:
-                self._pending_line = Line.pending_thermometer(selection)
-            elif self.edit_mode == EditMode.PALINDROME:
-                self._pending_line = Line.pending_palindrome(selection)
-            elif self.edit_mode == EditMode.RENBAN:
-                self._pending_line = Line.pending_renban(selection)
-            elif self.edit_mode == EditMode.GERMAN_WHISPER:
-                self._pending_line = Line.pending_whisper(selection)
+                self._draw_cursor()
             else:
-                assert(False)
-        else:
-            self._selection = None
-
-        self._draw_cursor()
+                if selection is None:
+                    return
+                if self.edit_mode == EditMode.THERMOMETER:
+                    self._pending_line = Line.pending_thermometer(selection)
+                elif self.edit_mode == EditMode.PALINDROME:
+                    self._pending_line = Line.pending_palindrome(selection)
+                elif self.edit_mode == EditMode.RENBAN:
+                    self._pending_line = Line.pending_renban(selection)
+                elif self.edit_mode == EditMode.GERMAN_WHISPER:
+                    self._pending_line = Line.pending_whisper(selection)
+                else:
+                    assert(False)
 
     def _on_mouse_released(self, event):
         if self._pending_line is None:
@@ -554,6 +605,18 @@ class SudokuUI(tk.Frame):
             return
         self._pending_line.path.append(selection)
         self._draw_line(self._pending_line)
+
+    def _draw_kropki(self, kropki):
+        color = "white" if kropki.color == Kropki.Color.WHITE else "black"
+        (y, x) = ((kropki.cell1[0] + kropki.cell2[0]) * 0.5, (kropki.cell1[1] + kropki.cell2[1])*0.5)
+        x0 = MARGIN + (x + 0.35) * SIDE + 1
+        y0 = MARGIN + (y + 0.35) * SIDE + 1
+        x1 = MARGIN + (x + 0.65) * SIDE - 1
+        y1 = MARGIN + (y + 0.65) * SIDE - 1
+        self._canvas.create_oval(
+            x0, y0, x1, y1,
+            fill=color, outline="black", tags="constraints"
+        )
 
     def _draw_line(self, line):
         if line.style == Line.Style.THERMOMETER:
