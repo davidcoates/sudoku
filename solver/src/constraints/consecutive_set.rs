@@ -91,10 +91,8 @@ impl Constraint for ConsecutiveSet {
         }
 
         let excess = self.variables.len() - included_run;
-        let stretch_min = if min.unwrap() >= excess { min.unwrap() - excess } else { 0 };
-        let stretch_max = if usize::MAX - excess >= max.unwrap() { max.unwrap() + excess } else { usize::MAX };
 
-        let cover = Domain::range(stretch_min, stretch_max);
+        let cover = Domain::range(min.unwrap().saturating_sub(excess), max.unwrap().saturating_add(excess));
 
         let mut progress = false;
 

@@ -94,6 +94,10 @@ fn main() {
             "ConsecutiveSet" => {
                 constraints.push(BoxedConstraint::new(Rc::new(ConsecutiveSet::new(id, variables))));
             }
+            "Difference" => {
+                let threshold = constraint["threshold"].as_u64().unwrap() as usize;
+                constraints.push(BoxedConstraint::new(Rc::new(Difference::new(id, variables_ordered, threshold))));
+            }
             _ => panic!("unknown type"),
         }
 

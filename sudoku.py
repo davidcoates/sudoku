@@ -19,10 +19,15 @@ class Renban:
     path: list[(int, int)]
 
 @dataclass
+class Whisper:
+    path: list[(int, int)]
+
+@dataclass
 class Constraints:
     thermometers: list[Thermometer] = field(default_factory=list)
     palindromes: list[Palindrome] = field(default_factory=list)
     renbans: list[Renban] = field(default_factory=list)
+    whispers: list[Whisper] = field(default_factory=list)
     antiknight: bool = False
     antiking: bool = False
 
@@ -43,6 +48,8 @@ class Sudoku(object):
             rules.append("Digits on a yellow line form a palindrome.")
         if self._constraints.renbans:
             rules.append("Digits on a purple line form a consecutive set.")
+        if self._constraints.whispers:
+            rules.append("Consecutive cells on a green line have a difference of at least 5.")
         if self._constraints.antiknight:
             rules.append("Digits a knight's move away can not be the same.")
         if self._constraints.antiking:
@@ -179,6 +186,15 @@ class Sudoku(object):
                 "type": "ConsecutiveSet",
                 "variables": variables,
                 "description": "renban"
+            })
+
+        for line in self._constraints.whispers:
+            variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
+            constraints.append({
+                "type": "Difference",
+                "variables": variables,
+                "description": "whisper",
+                "threshold": 5,
             })
 
         # TODO should avoid duplicate constraints

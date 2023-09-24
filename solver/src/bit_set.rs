@@ -115,6 +115,12 @@ impl BitSet {
         self.bits |= other.bits;
     }
 
+    pub fn complement(&self) -> BitSet {
+        BitSet {
+            bits: !self.bits,
+        }
+    }
+
 }
 
 impl fmt::Display for BitSet {

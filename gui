@@ -59,6 +59,14 @@ class Line():
     def renban(path):
         return Line(path, Line.Style.SIMPLE, "purple2")
 
+    @staticmethod
+    def pending_whisper(cell):
+        return Line([cell], Line.Style.SIMPLE, "green3")
+
+    @staticmethod
+    def whisper(path):
+        return Line(path, Line.Style.SIMPLE, "green2")
+
 
 
 class Action(ABC):
@@ -159,12 +167,16 @@ class RenbanAction(LineAction):
     def _lines(self):
         return self._sudoku.constraints.renbans
 
+class WhisperAction(LineAction):
+    def _lines(self):
+        return self._sudoku.constraints.whispers
 
 class EditMode(Enum):
     DIGIT = 0
     THERMOMETER = 1
     PALINDROME = 2
     RENBAN = 3
+    GERMAN_WHISPER = 4
 
 def parse_arguments():
     """
@@ -247,7 +259,7 @@ class SudokuUI(tk.Frame):
 
         for em in EditMode:
             option = tk.Radiobutton(panel,
-                                    text=(em.name.title()),
+                                    text=(em.name.title().replace('_', ' ')),
                                     variable=edit_mode,
                                     value=em.value,
                                     command=on_edit_mode_changed,
@@ -437,6 +449,8 @@ class SudokuUI(tk.Frame):
             self._draw_line(Line.palindrome(line.path))
         for line in self._sudoku.constraints.renbans:
             self._draw_line(Line.renban(line.path))
+        for line in self._sudoku.constraints.whispers:
+            self._draw_line(Line.whisper(line.path))
         for i in range(9):
             for j in range(9):
                 answer = self._sudoku.get(i, j)
@@ -498,6 +512,8 @@ class SudokuUI(tk.Frame):
                 self._pending_line = Line.pending_palindrome(selection)
             elif self.edit_mode == EditMode.RENBAN:
                 self._pending_line = Line.pending_renban(selection)
+            elif self.edit_mode == EditMode.GERMAN_WHISPER:
+                self._pending_line = Line.pending_whisper(selection)
             else:
                 assert(False)
         else:
@@ -517,6 +533,8 @@ class SudokuUI(tk.Frame):
             self._apply(PalindromeAction(self._sudoku, Palindrome(self._pending_line.path)))
         elif self.edit_mode == EditMode.RENBAN:
             self._apply(RenbanAction(self._sudoku, Renban(self._pending_line.path)))
+        elif self.edit_mode == EditMode.GERMAN_WHISPER:
+            self._apply(WhisperAction(self._sudoku, Whisper(self._pending_line.path)))
         else:
             assert(False)
         self._pending_line = None
@@ -656,6 +674,6 @@ if __name__ == '__main__':
 
     root = tk.Tk()
     SudokuUI(root, sudoku)
-    root.geometry("%dx%d" % (WIDTH + 180, HEIGHT + 110))
+    root.geometry("%dx%d" % (WIDTH + 200, HEIGHT + 110))
     #root.resizable(False, False)
     root.mainloop()
