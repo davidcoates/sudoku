@@ -8,20 +8,18 @@ from typing import *
 from enum import Enum
 
 @dataclass
-class Thermometer:
+class Line:
     path: list[(int, int)]
 
 @dataclass
-class Palindrome:
-    path: list[(int, int)]
+class Edge:
+    # cell0 should compare less than cell1
+    cell0: (int, int)
+    cell1: (int, int)
 
-@dataclass
-class Renban:
-    path: list[(int, int)]
+    def __init__(self, cell0, cell1):
+        (self.cell0, self.cell1) = (cell0, cell1) if cell0 < cell1 else (cell1, cell0)
 
-@dataclass
-class Whisper:
-    path: list[(int, int)]
 
 @dataclass
 class Kropki:
@@ -29,15 +27,14 @@ class Kropki:
         WHITE = 0
         BLACK = 1
     color: Color
-    cell1: (int, int) # cell1 should compare less than cell2
-    cell2: (int, int)
+    edge: Edge
 
 @dataclass
 class Constraints:
-    thermometers: list[Thermometer] = field(default_factory=list)
-    palindromes: list[Palindrome] = field(default_factory=list)
-    renbans: list[Renban] = field(default_factory=list)
-    whispers: list[Whisper] = field(default_factory=list)
+    thermometers: list[Line] = field(default_factory=list)
+    palindromes: list[Line] = field(default_factory=list)
+    renbans: list[Line] = field(default_factory=list)
+    whispers: list[Line] = field(default_factory=list)
     kropkis: list[Kropki] = field(default_factory=list)
     antiknight: bool = False
     antiking: bool = False
@@ -123,6 +120,7 @@ class Sudoku(object):
                         getattr(self._constraints, name)
                     except AttributeError:
                         setattr(self._constraints, name, field.default_factory())
+
         except FileNotFoundError:
             self._board = [ [ None for c in range(9) ] for r in range(9) ]
             self._constraints = Constraints()

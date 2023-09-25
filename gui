@@ -24,7 +24,7 @@ BUTTON_COLOR = "white"
 CURSOR_COLOR = "red"
 LABEL_FONT = ("Courier New", 10)
 
-class Line():
+class LineRender():
 
     class Style(Enum):
         THERMOMETER = 0
@@ -37,35 +37,35 @@ class Line():
 
     @staticmethod
     def pending_thermometer(cell):
-        return Line([cell], Line.Style.THERMOMETER, "dark grey")
+        return LineRender([cell], LineRender.Style.THERMOMETER, "dark grey")
 
     @staticmethod
     def thermometer(path):
-        return Line(path, Line.Style.THERMOMETER, "light grey")
+        return LineRender(path, LineRender.Style.THERMOMETER, "light grey")
 
     @staticmethod
     def pending_palindrome(cell):
-        return Line([cell], Line.Style.SIMPLE, "gold3")
+        return LineRender([cell], LineRender.Style.SIMPLE, "gold3")
 
     @staticmethod
     def palindrome(path):
-        return Line(path, Line.Style.SIMPLE, "gold2")
+        return LineRender(path, LineRender.Style.SIMPLE, "gold2")
 
     @staticmethod
     def pending_renban(cell):
-        return Line([cell], Line.Style.SIMPLE, "purple3")
+        return LineRender([cell], LineRender.Style.SIMPLE, "purple3")
 
     @staticmethod
     def renban(path):
-        return Line(path, Line.Style.SIMPLE, "purple2")
+        return LineRender(path, LineRender.Style.SIMPLE, "purple2")
 
     @staticmethod
     def pending_whisper(cell):
-        return Line([cell], Line.Style.SIMPLE, "green3")
+        return LineRender([cell], LineRender.Style.SIMPLE, "green3")
 
     @staticmethod
     def whisper(path):
-        return Line(path, Line.Style.SIMPLE, "green2")
+        return LineRender(path, LineRender.Style.SIMPLE, "green2")
 
 
 class Action(ABC):
@@ -463,13 +463,13 @@ class SudokuUI(tk.Frame):
         self._canvas.delete("numbers")
         self._canvas.delete("constraints")
         for line in self._sudoku.constraints.thermometers:
-            self._draw_line(Line.thermometer(line.path))
+            self._draw_line(LineRender.thermometer(line.path))
         for line in self._sudoku.constraints.palindromes:
-            self._draw_line(Line.palindrome(line.path))
+            self._draw_line(LineRender.palindrome(line.path))
         for line in self._sudoku.constraints.renbans:
-            self._draw_line(Line.renban(line.path))
+            self._draw_line(LineRender.renban(line.path))
         for line in self._sudoku.constraints.whispers:
-            self._draw_line(Line.whisper(line.path))
+            self._draw_line(LineRender.whisper(line.path))
         for kropki in self._sudoku.constraints.kropkis:
             self._draw_kropki(kropki)
         for i in range(9):
@@ -527,9 +527,7 @@ class SudokuUI(tk.Frame):
             else:
                 (r1, c1) = (r0 - 1, c0)
             if 0 <= r1 < 9 and 0 <= c1 < 9:
-                e0 = (r0, c0)
-                e1 = (r1, c1)
-                return (e0, e1) if e0 < e1 else (e1, e0)
+                return Edge((r0, c0), (r1, c1))
         return None
 
     def _move_selection(self, x, y):
@@ -545,9 +543,8 @@ class SudokuUI(tk.Frame):
             edge = self._get_edge(event)
             if not edge:
                 return
-            (cell1, cell2) = edge
             color = Kropki.Color.WHITE if self.edit_mode == EditMode.WHITE_KROPKI else Kropki.Color.BLACK
-            self._apply(KropkiAction(self._sudoku, Kropki(color, cell1, cell2)))
+            self._apply(KropkiAction(self._sudoku, Kropki(color, edge)))
         else:
             # All the rest require clicking on a specific cell
             selection = self._get_cell(event)
@@ -608,7 +605,9 @@ class SudokuUI(tk.Frame):
 
     def _draw_kropki(self, kropki):
         color = "white" if kropki.color == Kropki.Color.WHITE else "black"
-        (y, x) = ((kropki.cell1[0] + kropki.cell2[0]) * 0.5, (kropki.cell1[1] + kropki.cell2[1])*0.5)
+        (r0, c0) = kropki.edge.cell0
+        (r1, c1) = kropki.edge.cell1
+        (y, x) = ((r0 + r1) * 0.5, (c0 + c1)*0.5)
         x0 = MARGIN + (x + 0.35) * SIDE + 1
         y0 = MARGIN + (y + 0.35) * SIDE + 1
         x1 = MARGIN + (x + 0.65) * SIDE - 1
@@ -619,7 +618,7 @@ class SudokuUI(tk.Frame):
         )
 
     def _draw_line(self, line):
-        if line.style == Line.Style.THERMOMETER:
+        if line.style == LineRender.Style.THERMOMETER:
             last_row, last_col = None, None
             for (row, col) in line.path:
                 if last_row is None:
@@ -641,7 +640,7 @@ class SudokuUI(tk.Frame):
                         fill=line.color, width=20, capstyle=tk.ROUND, tags="constraints"
                     )
                 last_row, last_col = row, col
-        elif line.style == Line.Style.SIMPLE:
+        elif line.style == LineRender.Style.SIMPLE:
             last_row, last_col = None, None
             for (row, col) in line.path:
                 if last_row is not None:
