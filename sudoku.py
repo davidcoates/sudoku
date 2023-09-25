@@ -210,7 +210,24 @@ class Sudoku(object):
                 "threshold": 5,
             })
 
-        # TODO kropkis
+        for kropki in self._constraints.kropkis:
+            variables = [ f"{r+1}:{c+1}" for (r, c) in [kropki.cell1, kropki.cell2] ]
+            match kropki.color:
+                case Kropki.Color.WHITE:
+                    constraints.append({
+                        "type": "ConsecutiveSet",
+                        "variables": variables,
+                        "description": "white kropki",
+                    })
+                case Kropki.Color.BLACK:
+                    constraints.append({
+                        "type": "Ratio",
+                        "variables": variables,
+                        "description": "black kropki",
+                        "ratio": 2,
+                    })
+                case _:
+                    assert(False)
 
         # TODO should avoid duplicate constraints
 

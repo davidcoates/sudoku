@@ -98,6 +98,10 @@ fn main() {
                 let threshold = constraint["threshold"].as_u64().unwrap() as usize;
                 constraints.push(BoxedConstraint::new(Rc::new(Difference::new(id, variables_ordered, threshold))));
             }
+            "Ratio" => {
+                let ratio = constraint["ratio"].as_u64().unwrap() as usize;
+                constraints.push(BoxedConstraint::new(Rc::new(Ratio::new(id, variables, ratio))));
+            }
             _ => panic!("unknown type"),
         }
 

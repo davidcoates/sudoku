@@ -69,32 +69,35 @@ impl Constraint for Difference {
                 Some(v2) => {
                     let v1 = *variable;
                     let d1 = *domains.get(v1).unwrap();
-                    if d1.empty() {
-                        return Result::Unsolvable;
-                    }
+                    let d2 = *domains.get(v2).unwrap();
 
-                    let new = domains.get_mut(v2).unwrap();
-                    let old = *new;
-                    new.intersect_with(difference(d1, self.threshold));
-                    if *new != old {
-                        progress = true;
-                        if reporter.enabled() {
-                            reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v2), old.difference(*new), reporter.constraint_name(self.id)));
+                    {
+                        let new = domains.get_mut(v2).unwrap();
+                        let old = *new;
+                        new.intersect_with(difference(d1, self.threshold));
+                        if *new != old {
+                            progress = true;
+                            if reporter.enabled() {
+                                reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v2), old.difference(*new), reporter.constraint_name(self.id)));
+                            }
+                        }
+                        if new.empty() {
+                            return Result::Stuck;
                         }
                     }
 
-                    let d2 = *domains.get(v2).unwrap();
-                    if d2.empty() {
-                        return Result::Unsolvable;
-                    }
-
-                    let new = domains.get_mut(v1).unwrap();
-                    let old = *new;
-                    new.intersect_with(difference(d2, self.threshold));
-                    if *new != old {
-                        progress = true;
-                        if reporter.enabled() {
-                            reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v1), old.difference(*new), reporter.constraint_name(self.id)));
+                    {
+                        let new = domains.get_mut(v1).unwrap();
+                        let old = *new;
+                        new.intersect_with(difference(d2, self.threshold));
+                        if *new != old {
+                            progress = true;
+                            if reporter.enabled() {
+                                reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v1), old.difference(*new), reporter.constraint_name(self.id)));
+                            }
+                        }
+                        if new.empty() {
+                            return Result::Stuck;
                         }
                     }
                 },
