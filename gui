@@ -134,59 +134,55 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
-class LineAction(Action):
+class ListAction(Action):
 
-    def __init__(self, sudoku, line):
+    def __init__(self, sudoku, value):
         self._sudoku = sudoku
-        self._line = line
+        self._value = value
 
     def _lines(self):
         assert(False)
 
     def apply(self):
-        lines = self._lines()
-        if self._line in lines:
-            lines.remove(self._line)
+        values = self._values()
+        if self._value in values:
+            values.remove(self._value)
         else:
-            lines.append(self._line)
+            values.append(self._value)
 
     def undo(self):
         self.apply()
 
 
-class ThermometerAction(LineAction):
-    def _lines(self):
+class ThermometerAction(ListAction):
+    def _values(self):
         return self._sudoku.constraints.thermometers
 
-class PalindromeAction(LineAction):
-    def _lines(self):
+class PalindromeAction(ListAction):
+    def _values(self):
         return self._sudoku.constraints.palindromes
 
-class RenbanAction(LineAction):
-    def _lines(self):
+class RenbanAction(ListAction):
+    def _values(self):
         return self._sudoku.constraints.renbans
 
-class WhisperAction(LineAction):
-    def _lines(self):
+class WhisperAction(ListAction):
+    def _values(self):
         return self._sudoku.constraints.whispers
 
+class KropkiAction(ListAction):
+    def _values(self):
+        return self._sudoku.constraints.kropkis
 
-class KropkiAction(Action):
+class XVAction(ListAction):
+    def _values(self):
+        return self._sudoku.constraints.xvs
 
-    def __init__(self, sudoku, kropki):
-        self._sudoku = sudoku
-        self._kropki = kropki
 
-    def apply(self):
-        kropkis = self._sudoku.constraints.kropkis
-        if self._kropki in kropkis:
-            kropkis.remove(self._kropki)
-        else:
-            kropkis.append(self._kropki)
-
-    def undo(self):
-        self.apply()
-
+class EditModeType(Enum):
+    CELL = 0
+    LINE = 1
+    EDGE = 2
 
 class EditMode(Enum):
     DIGIT = 0
@@ -196,6 +192,20 @@ class EditMode(Enum):
     GERMAN_WHISPER = 4
     WHITE_KROPKI = 5
     BLACK_KROPKI = 6
+    V = 7
+    X = 8
+
+    def type(self):
+        match self:
+            case EditMode.DIGIT:
+                return EditModeType.CELL
+            case EditMode.THERMOMETER | EditMode.PALINDROME | EditMode.RENBAN | EditMode.GERMAN_WHISPER:
+                return EditModeType.LINE
+            case EditMode.WHITE_KROPKI | EditMode.BLACK_KROPKI | EditMode.V | EditMode.X:
+                return EditModeType.EDGE
+            case _:
+                assert(False)
+
 
 def parse_arguments():
     """
@@ -316,16 +326,15 @@ class SudokuUI(tk.Frame):
 
         self._make_header(panel, "Solver Config")
 
+        self._trace = tk.BooleanVar()
+        trace_check = self._init_check(panel, "Trace", self._trace)
+
         self._branch = tk.BooleanVar()
         branch_check = self._init_check(panel, "Branch", self._branch)
 
         self._greedy = tk.BooleanVar()
         greedy_check = self._init_check(panel, "Greedy", self._greedy)
         greedy_check.config(state=tk.DISABLED)
-
-        self._trace = tk.BooleanVar()
-        trace_check = self._init_check(panel, "Trace", self._trace)
-        trace_check.config(state=tk.DISABLED)
 
         self._max_depth = tk.IntVar()
         self._max_depth.set(1)
@@ -349,7 +358,6 @@ class SudokuUI(tk.Frame):
         def toggle_state():
             state = tk.NORMAL if self._branch.get() else tk.DISABLED
             greedy_check.config(state=state)
-            trace_check.config(state=state)
             max_depth_label.config(state=state)
             max_depth_input.config(state=state)
 
@@ -422,9 +430,10 @@ class SudokuUI(tk.Frame):
                                  highlightthickness=0)
         self._canvas.pack(side=tk.TOP)
 
-        self._init_config_panel(edit_config_panel, tk.BOTTOM)
-        self._init_edit_panel(edit_config_panel, tk.BOTTOM)
-        self._init_global_panel(edit_config_panel, tk.BOTTOM)
+        self._init_global_panel(edit_config_panel, tk.TOP)
+        self._init_edit_panel(edit_config_panel, tk.TOP)
+        self._init_config_panel(edit_config_panel, tk.TOP)
+
         self._init_control_panel(left_panel, tk.BOTTOM)
 
         self._draw_grid()
@@ -470,6 +479,8 @@ class SudokuUI(tk.Frame):
             self._draw_line(LineRender.renban(line.path))
         for line in self._sudoku.constraints.whispers:
             self._draw_line(LineRender.whisper(line.path))
+        for xv in self._sudoku.constraints.xvs:
+            self._draw_xv(xv)
         for kropki in self._sudoku.constraints.kropkis:
             self._draw_kropki(kropki)
         for i in range(9):
@@ -539,16 +550,20 @@ class SudokuUI(tk.Frame):
 
     def _on_mouse_clicked(self, event):
 
-        if self.edit_mode == EditMode.WHITE_KROPKI or self.edit_mode == EditMode.BLACK_KROPKI:
+        if self.edit_mode.type() == EditModeType.EDGE:
             edge = self._get_edge(event)
             if not edge:
                 return
-            color = Kropki.Color.WHITE if self.edit_mode == EditMode.WHITE_KROPKI else Kropki.Color.BLACK
-            self._apply(KropkiAction(self._sudoku, Kropki(color, edge)))
+            if self.edit_mode == EditMode.WHITE_KROPKI or self.edit_mode == EditMode.BLACK_KROPKI:
+                color = Kropki.Color.WHITE if self.edit_mode == EditMode.WHITE_KROPKI else Kropki.Color.BLACK
+                self._apply(KropkiAction(self._sudoku, Kropki(color, edge)))
+            elif self.edit_mode == EditMode.V or self.edit_mode == EditMode.X:
+                value = XV.Value.X if self.edit_mode == EditMode.X else XV.Value.V
+                self._apply(XVAction(self._sudoku, XV(value, edge)))
         else:
             # All the rest require clicking on a specific cell
             selection = self._get_cell(event)
-            if self.edit_mode == EditMode.DIGIT:
+            if self.edit_mode.type() == EditModeType.CELL:
                 # If we click outside the canvas or on an already selected cell, then clear the selection
                 if selection is None or selection == self._selection:
                     self._selection = None
@@ -615,6 +630,16 @@ class SudokuUI(tk.Frame):
         self._canvas.create_oval(
             x0, y0, x1, y1,
             fill=color, outline="black", tags="constraints"
+        )
+
+    def _draw_xv(self, xv):
+        (r0, c0) = xv.edge.cell0
+        (r1, c1) = xv.edge.cell1
+        (r, c) = ((r0 + r1) * 0.5, (c0 + c1)*0.5)
+        x = MARGIN + c * SIDE + SIDE / 2
+        y = MARGIN + r * SIDE + SIDE / 2
+        self._canvas.create_text(
+            x, y, text=xv.value.name, tags="constraints", fill="black", font=("Stencil", 15)
         )
 
     def _draw_line(self, line):

@@ -20,7 +20,6 @@ class Edge:
     def __init__(self, cell0, cell1):
         (self.cell0, self.cell1) = (cell0, cell1) if cell0 < cell1 else (cell1, cell0)
 
-
 @dataclass
 class Kropki:
     class Color(Enum):
@@ -30,12 +29,21 @@ class Kropki:
     edge: Edge
 
 @dataclass
+class XV:
+    class Value(Enum):
+        V = 5
+        X = 10
+    value: Value
+    edge: Edge
+
+@dataclass
 class Constraints:
     thermometers: list[Line] = field(default_factory=list)
     palindromes: list[Line] = field(default_factory=list)
     renbans: list[Line] = field(default_factory=list)
     whispers: list[Line] = field(default_factory=list)
     kropkis: list[Kropki] = field(default_factory=list)
+    xvs: list[XV] = field(default_factory=list)
     antiknight: bool = False
     antiking: bool = False
 
@@ -60,13 +68,15 @@ class Sudoku(object):
             rules.append("Consecutive cells on a green line have a difference of at least 5.")
         if self._constraints.kropkis:
             rules.append("White dots indicate consecutive digits. Black dots indicate a 1:2 ratio.")
+        if self._constraints.xvs:
+            rules.append("Cells separated by a V sum to 5, cells separated by an X sum to 10.")
         if self._constraints.antiknight:
             rules.append("Digits a knight's move away can not be the same.")
         if self._constraints.antiking:
             rules.append("Digits a king's move away can not be the same.")
         return " ".join(rules)
 
-    # TODO renban, kropkis
+    # TODO renban, kropkis, XV
     def to_json(self):
         js = {
             "title": self._sudoku_name,
@@ -209,7 +219,7 @@ class Sudoku(object):
             })
 
         for kropki in self._constraints.kropkis:
-            variables = [ f"{r+1}:{c+1}" for (r, c) in [kropki.cell1, kropki.cell2] ]
+            variables = [ f"{r+1}:{c+1}" for (r, c) in [kropki.edge.cell0, kropki.edge.cell1] ]
             match kropki.color:
                 case Kropki.Color.WHITE:
                     constraints.append({
@@ -226,6 +236,15 @@ class Sudoku(object):
                     })
                 case _:
                     assert(False)
+
+        for xv in self._constraints.xvs:
+            variables = [ f"{r+1}:{c+1}" for (r, c) in [xv.edge.cell0, xv.edge.cell1] ]
+            constraints.append({
+                "type": "DistinctSum",
+                "variables": variables,
+                "description": xv.value.name,
+                "sum": xv.value.value
+            })
 
         # TODO should avoid duplicate constraints
 

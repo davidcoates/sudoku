@@ -77,7 +77,7 @@ impl BoxedConstraint {
 
 }
 
-fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+pub fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
     match constraint.simplify(domains, reporter) {
         Result::Stuck => {
             return Result::Progress(vec![constraint]);

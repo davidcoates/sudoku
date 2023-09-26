@@ -102,6 +102,10 @@ fn main() {
                 let ratio = constraint["ratio"].as_u64().unwrap() as usize;
                 constraints.push(BoxedConstraint::new(Rc::new(Ratio::new(id, variables, ratio))));
             }
+            "DistinctSum" => {
+                let sum = constraint["sum"].as_u64().unwrap() as usize;
+                constraints.push(BoxedConstraint::new(Rc::new(DistinctSum::new(id, variables, sum))));
+            }
             _ => panic!("unknown type"),
         }
 

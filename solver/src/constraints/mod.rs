@@ -5,6 +5,7 @@ mod consecutive_set;
 mod increasing;
 mod difference;
 mod ratio;
+mod distinct_sum;
 
 pub use permutation::*;
 pub use equals::*;
@@ -13,3 +14,4 @@ pub use consecutive_set::*;
 pub use increasing::*;
 pub use difference::*;
 pub use ratio::*;
+pub use distinct_sum::*;
