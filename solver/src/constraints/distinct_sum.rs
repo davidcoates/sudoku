@@ -1,6 +1,7 @@
 use crate::constraint::*;
 use crate::constraints::permutation::*;
 use crate::types::*;
+use crate::bit_set::*;
 use std::rc::Rc;
 
 #[derive(Clone,Debug)]
@@ -28,18 +29,15 @@ impl DistinctSum {
 impl Constraint for DistinctSum {
 
     fn check_solved(&self, domains: &mut Domains) -> bool {
-        let mut union = Domain::new();
-        for variable in self.variables.iter() {
-            union.union_with(*domains.get(variable).unwrap());
-        }
+        let union : Domain = self.variables.iter().map(|v| domains[v]).union();
         return union.len() == self.variables.len() && self.sum == union.iter().sum::<usize>();
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
 
         if self.variables.len() == 1 {
             let variable = self.variables.iter().next().unwrap();
-            let domain = domains.get_mut(variable).unwrap();
+            let domain = &mut domains[variable];
             if reporter.enabled() {
                 reporter.emit(format!("{} is {} by {}", reporter.variable_name(variable), self.sum, reporter.constraint_name(self.id)));
             }
@@ -58,11 +56,11 @@ impl Constraint for DistinctSum {
                     return Result::Unsolvable;
                 }
                 for variable in v1.iter() {
-                    domains.get_mut(variable).unwrap().intersect_with(d1);
+                    domains[variable].intersect_with(d1);
                 }
                 let v2 = self.variables.difference(v1);
                 for variable in v2.iter() {
-                    domains.get_mut(variable).unwrap().difference_with(d1);
+                    domains[variable].difference_with(d1);
                 }
                 let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, v1, d1)));
                 let c2 = BoxedConstraint::new(Rc::new(DistinctSum::new(self.id, v2, self.sum - sum)));
@@ -71,10 +69,7 @@ impl Constraint for DistinctSum {
             _ => {
                 // simplify_distinct doesn't consider n tuple (where n = variables.len()),
                 // so consider that for ourselves.
-                let mut union = Domain::new();
-                for variable in self.variables.iter() {
-                    union.union_with(*domains.get(variable).unwrap());
-                }
+                let union: Domain = self.variables.iter().map(|v| domains[v]).union();
                 if union.len() == self.variables.len() {
                     if self.sum == union.iter().sum::<usize>() {
                        let constraint = BoxedConstraint::new(Rc::new(Permutation::new(self.id, self.variables, union)));

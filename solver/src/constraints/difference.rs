@@ -1,5 +1,6 @@
 use crate::constraint::*;
 use crate::types::*;
+use crate::bit_set::*;
 use std::rc::Rc;
 
 // Strictly increasing digits
@@ -17,10 +18,7 @@ impl Difference {
         if variables.len() <= 1 {
             panic!("bad Difference")
         }
-        let mut variable_set = VariableSet::new();
-        for variable in variables.iter() {
-            variable_set.insert(*variable);
-        }
+        let variable_set = variables.iter().map(|v| Domain::single(*v)).union();
         return Difference {
             id,
             variables,
@@ -31,17 +29,11 @@ impl Difference {
 
 }
 
-// domain of values at least threshold away from value
-fn difference_single(value: usize, threshold: usize) -> Domain {
-    return Domain::range(value.saturating_sub(threshold - 1), value.saturating_add(threshold - 1)).complement();
-}
-
 fn difference(domain: Domain, threshold: usize) -> Domain {
-    let mut union = Domain::new();
-    for value in domain.iter() {
-        union.union_with(difference_single(value, threshold));
-    }
-    return union;
+    domain.iter().map(|v|
+        // values at least threshold away from value
+        Domain::range(v.saturating_sub(threshold - 1), v.saturating_add(threshold - 1)).complement()
+    ).union()
 }
 
 impl Constraint for Difference {
@@ -49,7 +41,7 @@ impl Constraint for Difference {
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut last : Option<usize> = None;
         for variable in self.variables.iter() {
-            let value = domains.get(*variable).unwrap().value_unchecked();
+            let value = domains[*variable].value_unchecked();
             if last.is_some() && usize::abs_diff(value, last.unwrap()) < self.threshold {
                 return false;
             }
@@ -58,7 +50,7 @@ impl Constraint for Difference {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
 
         let mut progress = false;
 
@@ -68,35 +60,19 @@ impl Constraint for Difference {
             match last {
                 Some(v2) => {
                     let v1 = *variable;
-                    let d1 = *domains.get(v1).unwrap();
-                    let d2 = *domains.get(v2).unwrap();
+                    let d1 = domains[v1];
+                    let d2 = domains[v2];
 
                     {
-                        let new = domains.get_mut(v2).unwrap();
-                        let old = *new;
-                        new.intersect_with(difference(d1, self.threshold));
-                        if *new != old {
-                            progress = true;
-                            if reporter.enabled() {
-                                reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v2), old.difference(*new), reporter.constraint_name(self.id)));
-                            }
-                        }
-                        if new.empty() {
+                        progress |= apply(&*self, domains, reporter, v2, |d| d.intersect_with(difference(d1, self.threshold)));
+                        if domains[v2].empty() {
                             return Result::Stuck;
                         }
                     }
 
                     {
-                        let new = domains.get_mut(v1).unwrap();
-                        let old = *new;
-                        new.intersect_with(difference(d2, self.threshold));
-                        if *new != old {
-                            progress = true;
-                            if reporter.enabled() {
-                                reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v1), old.difference(*new), reporter.constraint_name(self.id)));
-                            }
-                        }
-                        if new.empty() {
+                        progress |= apply(&*self, domains, reporter, v1, |d| d.intersect_with(difference(d2, self.threshold)));
+                        if domains[v1].empty() {
                             return Result::Stuck;
                         }
                     }

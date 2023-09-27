@@ -27,7 +27,7 @@ impl Constraint for NotEquals {
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut seen = Domain::new();
         for variable in self.variables.iter() {
-            let domain = *domains.get(variable).unwrap();
+            let domain = domains[variable];
             if !seen.intersection(domain).empty() {
                 return false;
             }
@@ -36,14 +36,14 @@ impl Constraint for NotEquals {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
 
         let mut iter = self.variables.iter();
         let v1 = iter.next().unwrap();
         let v2 = iter.next().unwrap();
 
-        let d1 = *domains.get(v1).unwrap();
-        let d2 = *domains.get(v2).unwrap();
+        let d1 = domains[v1];
+        let d2 = domains[v2];
 
         if d1.len() == 1 && d2.len() == 1 {
             if d1.value_unchecked() == d2.value_unchecked() {
@@ -59,7 +59,7 @@ impl Constraint for NotEquals {
             let value = d1.value_unchecked();
             if d2.contains(value) {
                 progress = true;
-                domains.get_mut(v2).unwrap().remove(value);
+                domains[v2].remove(value);
                 if reporter.enabled() {
                     reporter.emit(format!("{} is not {} by {}", reporter.variable_name(v2), value, reporter.constraint_name(self.id)));
                 }
@@ -70,7 +70,7 @@ impl Constraint for NotEquals {
             let value = d2.value_unchecked();
             if d1.contains(value) {
                 progress = true;
-                domains.get_mut(v1).unwrap().remove(value);
+                domains[v1].remove(value);
                 if reporter.enabled() {
                     reporter.emit(format!("{} is not {} by {}", reporter.variable_name(v1), value, reporter.constraint_name(self.id)));
                 }

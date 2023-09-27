@@ -10,7 +10,7 @@ pub type ConstraintID = usize;
 pub trait Reporter {
     fn variable_name(&self, variable: Variable) -> &String;
     fn constraint_name(&self, id: ConstraintID) -> &String;
-    fn emit(&mut self, breadcrumb: String);
+    fn emit(&self, breadcrumb: String);
     fn enabled(&self) -> bool;
 }
 

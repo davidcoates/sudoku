@@ -176,9 +176,40 @@ pub trait Union<A = Self>: Sized {
         where I: Iterator<Item = A>;
 }
 
-
 impl Union for BitSet {
     fn union<I: Iterator<Item=Self>>(iter: I) -> Self {
         iter.fold(BitSet::new(), |a, b| a.union(b))
     }
 }
+
+pub trait Intersection<A = Self>: Sized {
+    fn intersection<I>(iter: I) -> Self
+        where I: Iterator<Item = A>;
+}
+
+impl Intersection for BitSet {
+    fn intersection<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter.fold(BitSet::all(), |a, b| a.intersection(b))
+    }
+}
+
+pub trait IteratorExt: Iterator {
+
+    fn union<U>(self) -> U
+    where
+        U: Union<Self::Item>,
+        Self: Sized,
+    {
+        U::union(self)
+    }
+
+    fn intersection<I>(self) -> I
+    where
+        I: Intersection<Self::Item>,
+        Self: Sized,
+    {
+        I::intersection(self)
+    }
+}
+
+impl<I: Iterator> IteratorExt for I {}

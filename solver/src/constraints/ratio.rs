@@ -47,49 +47,33 @@ impl Constraint for Ratio {
         let v1 = iter.next().unwrap();
         let v2 = iter.next().unwrap();
 
-        let d1 = domains.get(v1).unwrap().value_unchecked();
-        let d2 = domains.get(v2).unwrap().value_unchecked();
+        let d1 = domains[v1].value_unchecked();
+        let d2 = domains[v2].value_unchecked();
 
         return d1.checked_mul(self.ratio) == Some(d2) || d2.checked_mul(self.ratio) == Some(d1);
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
 
         let mut iter = self.variables.iter();
         let v1 = iter.next().unwrap();
         let v2 = iter.next().unwrap();
 
-        let d1 = *domains.get(v1).unwrap();
-        let d2 = *domains.get(v2).unwrap();
+        let d1 = domains[v1];
+        let d2 = domains[v2];
 
         let mut progress = false;
 
         {
-            let new = domains.get_mut(v2).unwrap();
-            let old = *new;
-            new.intersect_with(ratio_image(d1, self.ratio));
-            if *new != old {
-                progress = true;
-                if reporter.enabled() {
-                    reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v2), old.difference(*new), reporter.constraint_name(self.id)));
-                }
-            }
-            if new.empty() {
+            progress |= apply(&*self, domains, reporter, v2, |d| d.intersect_with(ratio_image(d1, self.ratio)));
+            if domains[v2].empty() {
                 return Result::Stuck;
             }
         }
 
         {
-            let new = domains.get_mut(v1).unwrap();
-            let old = *new;
-            new.intersect_with(ratio_image(d2, self.ratio));
-            if *new != old {
-                progress = true;
-                if reporter.enabled() {
-                    reporter.emit(format!("{} is not {} since {}", reporter.variable_name(v1), old.difference(*new), reporter.constraint_name(self.id)));
-                }
-            }
-            if new.empty() {
+            progress |= apply(&*self, domains, reporter, v1, |d| d.intersect_with(ratio_image(d2, self.ratio)));
+            if domains[v1].empty() {
                 return Result::Stuck;
             }
         }

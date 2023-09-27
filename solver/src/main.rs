@@ -31,7 +31,7 @@ impl Reporter for ReporterImpl {
         &self.constraint_id_to_name[id]
     }
 
-    fn emit(&mut self, breadcrumb: String) {
+    fn emit(&self, breadcrumb: String) {
         eprint!("{}\n", breadcrumb);
     }
 

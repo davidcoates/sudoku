@@ -38,15 +38,10 @@ pub fn simplify_distinct(domains: &mut Domains, variables: VariableSet) -> Optio
     //
     // E.g. if there are three cells A = (12) and B = (23), and C = (13), then (123) can be removed from all other cells.
 
-    let values: Vec<usize> = variables.iter().collect();
-    for combination in 1..(u128::pow(2, values.len() as u32) - 1) {
-        let mut selection = VariableSet::new();
-        let mut union = Domain::new();
-        for i in BitSet::from_bits(combination).iter() {
-            let variable = *values.get(i).unwrap();
-            selection.insert(variable);
-            union.union_with(*domains.get(variable).unwrap());
-        }
+    let variable_list: Vec<usize> = variables.iter().collect();
+    for combination in 1..(u128::pow(2, variable_list.len() as u32) - 1) {
+        let selection: VariableSet = VariableSet::from_bits(combination).iter().map(|i| VariableSet::single(variable_list[i])).union();
+        let     union:     Domain  =      Domain::from_bits(combination).iter().map(|i| domains[variable_list[i]]).union();
         if union.len() == selection.len() {
             return Some((selection, union));
         }
@@ -55,76 +50,20 @@ pub fn simplify_distinct(domains: &mut Domains, variables: VariableSet) -> Optio
     return None;
 }
 
-// This works, but seems too slow to be useful. It should be used in addition to simplify_distinct
-/*
-pub fn simplify_permutation(domains: &mut Domains, variables: VariableSet) -> Option<(VariableSet, Domain)> {
-
-    // Solve based on the following idea:
-    //
-    // Suppose there is a set S of n cells, and the intersection of domains of S is I.
-    // If:
-    //  * I does not overlap with the domain of any cell not in S, and
-    //  * I has length n
-    // Then:
-    //  * The domain of each cell in S can be intersected with I
-    //  * The domain of each cell not in S can be subtracted by I.
-    //
-    // E.g. if there are two cells A = (123) and B = (124), and no other cell contains a 1 or a 2,
-    // then A = B = (12), and both 1 and 2 are removed from the domain of every remaining cell.
-
-    let values: Vec<usize> = variables.iter().collect();
-    for combination in 1..(u128::pow(2, values.len() as u32) - 1) {
-        let mut selection = VariableSet::new();
-        let mut intersection = Domain::all();
-        for i in Domain::from_bits(combination).iter() {
-            let variable = *values.get(i).unwrap();
-            selection.insert(variable);
-            intersection.intersect_with(*domains.get(variable).unwrap());
-        }
-        if intersection.len() == selection.len() {
-            let mut ok = true;
-            let selection_complement = variables.difference(selection);
-            for variable in selection_complement.iter() {
-                if !domains.get(variable).unwrap().intersection(intersection).empty() {
-                    ok = false;
-                    break;
-                }
-            }
-            if ok {
-                return Some((selection, intersection));
-            }
-        }
-    }
-
-    return None;
-}
-*/
-
 impl Constraint for Permutation {
 
     fn check_solved(&self, domains: &mut Domains) -> bool {
-        let mut domain = Domain::new();
-        for variable in self.variables.iter() {
-            domain.union_with(*domains.get(variable).unwrap())
-        }
-        return domain == self.domain;
+        let union: Domain = self.variables.iter().map(|v| domains[v]).union();
+        return union == self.domain;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &mut dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
 
         let mut progress = false;
 
         // Firstly, intersect against this constraint's domain
         for variable in self.variables.iter() {
-            let new = domains.get_mut(variable).unwrap();
-            let old = *new;
-            new.intersect_with(self.domain);
-            if *new != old {
-                progress = true;
-                if reporter.enabled() {
-                    reporter.emit(format!("{} is not {} by {}", reporter.variable_name(variable), old.difference(*new), reporter.constraint_name(self.id)));
-                }
-            }
+            progress |= apply(&*self, domains, reporter, variable, |d| d.intersect_with(self.domain));
         }
 
         //match simplify_distinct(domains, self.variables).or_else(|| simplify_permutation(domains, self.variables)) {

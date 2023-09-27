@@ -11,7 +11,7 @@ pub struct Puzzle {
 // only solved constraints
 // order of constraints
 // only constraints with dirty variables
-fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &mut dyn Reporter) -> Result {
+fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &dyn Reporter) -> Result {
     // TODO
     let mut new_constraints = Constraints::new();
     let mut any_progress = false;
@@ -45,7 +45,7 @@ impl Puzzle {
         }
     }
 
-    pub fn solve_no_branch(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
+    pub fn solve_no_branch(self: &mut Puzzle, reporter: &dyn Reporter, config: Config) -> Result {
         let result = simplify(&mut self.domains, &self.constraints, reporter);
         match result {
             Result::Progress(constraints) => { self.constraints = constraints; return self.solve_no_branch(reporter, config); },
@@ -53,7 +53,7 @@ impl Puzzle {
         }
     }
 
-    pub fn solve(self: &mut Puzzle, reporter: &mut dyn Reporter, config: Config) -> Result {
+    pub fn solve(self: &mut Puzzle, reporter: &dyn Reporter, config: Config) -> Result {
         let result = self.solve_no_branch(reporter, config);
         if self.depth > config.max_depth {
             return result;
@@ -77,7 +77,7 @@ impl Puzzle {
                 variables.sort_by(|v1, v2| num_constraints(*v2).cmp(&num_constraints(*v1)));
 
                 for variable in variables.iter() {
-                    let domain = *self.domains.get(*variable).unwrap();
+                    let domain = self.domains[*variable];
                     let mut new_domain : Domain = domain;
                     for value in domain.iter() {
                         // Guess variable = value and try to solve without branching
@@ -86,7 +86,7 @@ impl Puzzle {
                             constraints: self.constraints.clone(), // TODO do constraints really need to be cloned?
                             depth: self.depth + 1,
                         };
-                        *puzzle.domains.get_mut(*variable).unwrap() = Domain::single(value);
+                        puzzle.domains[*variable] = Domain::single(value);
                         if reporter.enabled() {
                             reporter.emit(format!("guess {} = {}", reporter.variable_name(*variable), value));
                         }
@@ -101,7 +101,7 @@ impl Puzzle {
                         if reporter.enabled() {
                             reporter.emit(format!("{} is {} by guessing", reporter.variable_name(*variable), new_domain));
                         }
-                        *self.domains.get_mut(*variable).unwrap() = new_domain;
+                        self.domains[*variable] = new_domain;
                         return self.solve(reporter, config);
                     }
                 }
@@ -133,7 +133,7 @@ mod tests {
             panic!("unimplemented");
         }
 
-        fn emit(&mut self, _breadcrumb: String) {
+        fn emit(&self, _breadcrumb: String) {
             panic!("unimplemented");
         }
 
@@ -200,7 +200,7 @@ mod tests {
     fn check_grid(domains: Domains, expected: [[usize; 9]; 9]) {
         for r in 0..9 {
             for c in 0..9 {
-                assert_eq!(*domains.get(encode(r, c)).unwrap(), Domain::single(expected[r][c]));
+                assert_eq!(domains[encode(r, c)], Domain::single(expected[r][c]));
             }
         }
     }
