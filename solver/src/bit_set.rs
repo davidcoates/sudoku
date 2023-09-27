@@ -111,6 +111,10 @@ impl BitSet {
         self.bits &= other.bits;
     }
 
+    pub fn union(&self, other: BitSet) -> BitSet{
+        BitSet::from_bits(self.bits | other.bits)
+    }
+
     pub fn union_with(&mut self, other: BitSet) {
         self.bits |= other.bits;
     }
@@ -165,4 +169,16 @@ impl DoubleEndedIterator for BitSetIter {
         }
     }
 
+}
+
+pub trait Union<A = Self>: Sized {
+    fn union<I>(iter: I) -> Self
+        where I: Iterator<Item = A>;
+}
+
+
+impl Union for BitSet {
+    fn union<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter.fold(BitSet::new(), |a, b| a.union(b))
+    }
 }
