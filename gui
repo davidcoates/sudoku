@@ -192,8 +192,8 @@ class EditMode(Enum):
     GERMAN_WHISPER = 4
     WHITE_KROPKI = 5
     BLACK_KROPKI = 6
-    V = 7
-    X = 8
+    X = 7
+    V = 8
 
     def type(self):
         match self:

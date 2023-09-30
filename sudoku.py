@@ -31,8 +31,8 @@ class Kropki:
 @dataclass
 class XV:
     class Value(Enum):
-        V = 5
         X = 10
+        V = 5
     value: Value
     edge: Edge
 
