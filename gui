@@ -247,6 +247,7 @@ class SudokuUI(tk.Frame):
     def _reload_global_constraints(self):
         self._antiknight_check.select() if self._sudoku.constraints.antiknight else self._antiknight_check.deselect()
         self._antiking_check.select() if self._sudoku.constraints.antiking else self._antiking_check.deselect()
+        self._antixv_check.select() if self._sudoku.constraints.antixv else self._antixv_check.deselect()
 
     def _init_global_panel(self, parent, side):
 
@@ -268,6 +269,13 @@ class SudokuUI(tk.Frame):
         self._antiking_check = self._init_check(panel, "Antiking", self._antiking)
         self._antiking_check.config(command=toggle_antiking)
         self._antiking_check.pack()
+
+        self._antixv = tk.BooleanVar()
+        def toggle_antixv():
+            self._sudoku.constraints.antixv = self._antixv.get()
+        self._antixv_check = self._init_check(panel, "AntiXV", self._antixv)
+        self._antixv_check.config(command=toggle_antixv)
+        self._antixv_check.pack()
 
         self._reload_global_constraints()
 

@@ -46,6 +46,7 @@ class Constraints:
     xvs: list[XV] = field(default_factory=list)
     antiknight: bool = False
     antiking: bool = False
+    antixv: bool = False
 
 class Sudoku(object):
     """
@@ -68,8 +69,12 @@ class Sudoku(object):
             rules.append("Consecutive cells on a green line have a difference of at least 5.")
         if self._constraints.kropkis:
             rules.append("White dots indicate consecutive digits. Black dots indicate a 1:2 ratio.")
-        if self._constraints.xvs:
+        if self._constraints.xvs or self._constraints.antixv:
             rules.append("Cells separated by a V sum to 5, cells separated by an X sum to 10.")
+            if self._constraints.antixv:
+                rules.append("All XV's are given.")
+            else:
+                rules.append("Not all XV's are necessarily given.")
         if self._constraints.antiknight:
             rules.append("Digits a knight's move away can not be the same.")
         if self._constraints.antiking:
@@ -237,6 +242,15 @@ class Sudoku(object):
                 case _:
                     assert(False)
 
+        def edges():
+            for r in range(9):
+                for c in range(9):
+                    if r < 8:
+                        yield Edge((r, c), (r+1, c))
+                    if c < 8:
+                        yield Edge((r, c), (r, c+1))
+        antixv_edges = list(edges())
+
         for xv in self._constraints.xvs:
             variables = [ f"{r+1}:{c+1}" for (r, c) in [xv.edge.cell0, xv.edge.cell1] ]
             constraints.append({
@@ -245,6 +259,19 @@ class Sudoku(object):
                 "description": xv.value.name,
                 "sum": xv.value.value
             })
+            if self._constraints.antixv:
+                antixv_edges.remove(xv.edge)
+
+        if self._constraints.antixv:
+            for edge in antixv_edges:
+                variables = [ f"{r+1}:{c+1}" for (r, c) in [edge.cell0, edge.cell1] ]
+                constraints.append({
+                    "type": "DistinctAntisum",
+                    "variables": variables,
+                    "description": "antixv",
+                    "antisums": [ 5, 10 ]
+                })
+
 
         # TODO should avoid duplicate constraints
 
