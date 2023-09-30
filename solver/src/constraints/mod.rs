@@ -6,6 +6,7 @@ mod increasing;
 mod difference;
 mod ratio;
 mod distinct_sum;
+mod distinct_antisum;
 
 pub use permutation::*;
 pub use equals::*;
@@ -15,3 +16,4 @@ pub use increasing::*;
 pub use difference::*;
 pub use ratio::*;
 pub use distinct_sum::*;
+pub use distinct_antisum::*;

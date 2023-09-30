@@ -55,7 +55,7 @@ fn main() {
 
         let mut domain = Domain::new();
         for digit in domain_list.as_array().unwrap() {
-            domain.insert(usize::try_from(digit.as_u64().unwrap()).unwrap());
+            domain.insert(digit.as_u64().unwrap() as usize);
         }
         domains.push(domain);
     }
@@ -77,7 +77,7 @@ fn main() {
             "Permutation" => {
                 let mut domain = Domain::new();
                 for digit in constraint["domain"].as_array().unwrap() {
-                    domain.insert(usize::try_from(digit.as_u64().unwrap()).unwrap());
+                    domain.insert(digit.as_u64().unwrap() as usize);
                 }
 
                 constraints.push(BoxedConstraint::new(Rc::new(Permutation::new(id, variables, domain))));
@@ -105,6 +105,13 @@ fn main() {
             "DistinctSum" => {
                 let sum = constraint["sum"].as_u64().unwrap() as usize;
                 constraints.push(BoxedConstraint::new(Rc::new(DistinctSum::new(id, variables, sum))));
+            }
+            "DistinctAntisum" => {
+                let mut antisums = Domain::new();
+                for digit in constraint["antisums"].as_array().unwrap() {
+                    antisums.insert(digit.as_u64().unwrap() as usize);
+                }
+                constraints.push(BoxedConstraint::new(Rc::new(DistinctAntisum::new(id, variables, antisums))));
             }
             _ => panic!("unknown type"),
         }
