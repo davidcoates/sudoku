@@ -493,12 +493,26 @@ class SudokuUI(tk.Frame):
             self._draw_kropki(kropki)
         for i in range(9):
             for j in range(9):
-                answer = self._sudoku.get(i, j)
-                if answer is not None:
+                digit = self._sudoku.get(i, j)
+                if len(digit.values) < 9:
                     x = MARGIN + j * SIDE + SIDE / 2
                     y = MARGIN + i * SIDE + SIDE / 2
+                    if len(digit.values) == 0:
+                        digits = "N/A"
+                        size = 30
+                    else:
+                        digits = "".join(map(str, digit.values))
+                        match len(digit.values):
+                            case 1:
+                                size = 30
+                            case 2 | 3:
+                                size = 16
+                            case 4 | 5:
+                                size = 12
+                            case 6 | 7 | 8:
+                                size = 8
                     self._canvas.create_text(
-                        x, y, text=answer, tags="numbers", fill="black", font=("Stencil", 30)
+                        x, y, text=digits, tags="numbers", fill="black", font=("Stencil", size)
                     )
 
 
@@ -697,14 +711,14 @@ class SudokuUI(tk.Frame):
         if self.edit_mode is not EditMode.DIGIT:
             return
         (row, col) = self._selection
-        self._apply(DigitAction(self._sudoku, row, col, int(event.char)))
+        self._apply(DigitAction(self._sudoku, row, col, Digit([int(event.char)])))
         self._draw_sudoku()
 
     def _on_backspace_pressed(self, event):
         if self._selection is None:
             return
         (row, col) = self._selection
-        self._apply(DigitAction(self._sudoku, row, col, None))
+        self._apply(DigitAction(self._sudoku, row, col, Digit.blank()))
         self._draw_sudoku()
 
     def _apply(self, action, solve_state=None):

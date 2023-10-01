@@ -20,6 +20,7 @@ class Edge:
     def __init__(self, cell0, cell1):
         (self.cell0, self.cell1) = (cell0, cell1) if cell0 < cell1 else (cell1, cell0)
 
+
 @dataclass
 class Kropki:
     class Color(Enum):
@@ -28,6 +29,7 @@ class Kropki:
     color: Color
     edge: Edge
 
+
 @dataclass
 class XV:
     class Value(Enum):
@@ -35,6 +37,16 @@ class XV:
         V = 5
     value: Value
     edge: Edge
+
+
+@dataclass
+class Digit:
+    values: [int]
+
+    @classmethod
+    def blank(cls):
+        return Digit([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
 
 @dataclass
 class Constraints:
@@ -130,14 +142,19 @@ class Sudoku(object):
         try:
             with open(self._sudoku_filename, 'rb') as sudoku_file:
                 (self._board, self._constraints) = pickle.load(sudoku_file)
+                # backwards compatabilty fixes
                 for name, field in Constraints.__dataclass_fields__.items():
                     try:
                         getattr(self._constraints, name)
                     except AttributeError:
                         setattr(self._constraints, name, field.default_factory())
+                for r, row in enumerate(self._board):
+                    for c, digit in enumerate(row):
+                        if not isinstance(digit, Digit):
+                            self._board[r][c] = Digit([digit]) if digit is not None else Digit.blank()
 
         except FileNotFoundError:
-            self._board = [ [ None for c in range(9) ] for r in range(9) ]
+            self._board = [ [ Digit() for c in range(9) ] for r in range(9) ]
             self._constraints = Constraints()
 
     def set(self, r, c, value):
@@ -155,11 +172,7 @@ class Sudoku(object):
         domains = {}
         for r in range(9):
             for c in range(9):
-                if self._board[r][c] is None:
-                    domain = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-                else:
-                    domain = [ self._board[r][c] ]
-                domains[f"{r+1}:{c+1}"] = domain
+                domains[f"{r+1}:{c+1}"] = self._board[r][c].values
 
         constraints = []
 
@@ -340,9 +353,8 @@ class Sudoku(object):
         duration_ms = solver_output["duration_ms"]
         board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
         for variable, domain in solver_output["domains"].items():
-            if len(domain) == 1:
-                [r, c] = variable.split(':')
-                r, c = int(r) - 1, int(c) - 1
-                board[r][c] = domain[0]
+            [r, c] = variable.split(':')
+            r, c = int(r) - 1, int(c) - 1
+            board[r][c] = Digit(domain)
         return (f"{result.title()} ({duration_ms}ms)", board, pipe.stderr)
 
