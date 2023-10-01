@@ -17,6 +17,10 @@ impl BitSet {
         }
     }
 
+    pub fn max_value() -> usize {
+        return 127;
+    }
+
     pub fn from_bits(bits: u128) -> Self {
         BitSet{
             bits: bits,
@@ -37,8 +41,9 @@ impl BitSet {
         if min > max || max >= 128 {
             panic!("range({}, {}) invalid", min, max);
         }
-        let bits = ((1 << (max + 1)) - 1) & !((1 << min) - 1);
-        return BitSet::from_bits(bits);
+        let leq_max = if max == BitSet::max_value() { !0 } else { 1 << (max + 1) - 1 };
+        let geq_min = !((1 << min) - 1);
+        return BitSet::from_bits(leq_max & geq_min);
     }
 
     pub fn all() -> Self {
