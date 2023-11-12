@@ -49,8 +49,6 @@ impl Constraint for DistinctAntisum {
             }
         }
 
-        // TODO special case for 2 variables?
-
         match simplify_distinct(domains, self.variables) {
             Some((v1, d1)) => {
                 let sum : usize = d1.iter().sum();

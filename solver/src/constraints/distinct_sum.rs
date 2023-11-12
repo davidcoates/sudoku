@@ -49,37 +49,6 @@ impl Constraint for DistinctSum {
             }
         }
 
-        // TODO this should be made more general for len variables > 2
-        if self.variables.len() == 2 {
-
-            let mut progress = false;
-            let mut iter = self.variables.iter();
-            let v1 = iter.next().unwrap();
-            let v2 = iter.next().unwrap();
-
-            {
-                let d1 = domains[v1];
-                let union : Domain = d1.iter().filter(|v| *v <= self.sum).map(|v| Domain::single(self.sum - v)).union();
-                progress |= apply(&*self, domains, reporter, v2, |d| d.intersect_with(union));
-                if domains[v2].empty() {
-                    return Result::Unsolvable;
-                }
-            }
-
-            {
-                let d2 = domains[v2];
-                let union : Domain = d2.iter().filter(|v| *v <= self.sum).map(|v| Domain::single(self.sum - v)).union();
-                progress |= apply(&*self, domains, reporter, v1, |d| d.intersect_with(union));
-                if domains[v1].empty() {
-                    return Result::Unsolvable;
-                }
-            }
-
-            if progress {
-                return Result::Progress(vec![BoxedConstraint::new(self)]);
-            }
-        }
-
         match simplify_distinct(domains, self.variables) {
             Some((v1, d1)) => {
                 let sum : usize = d1.iter().sum();
