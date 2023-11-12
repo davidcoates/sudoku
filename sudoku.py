@@ -111,8 +111,8 @@ class Sudoku(object):
             js["antiking"] = {}
         for r, row in enumerate(self._board):
             for c, digit in enumerate(row):
-                if digit is not None:
-                    js["grid"][r][c] = { "value": digit, "given": True }
+                if len(digit.values) == 1:
+                    js["grid"][r][c] = { "value": digit.values[0], "given": True }
         for line in self._constraints.thermometers:
             js["thermometer"].append({ "lines": [[ f"R{r+1}C{c+1}" for (r, c) in line.path ]]})
         for line in self._constraints.palindromes:
