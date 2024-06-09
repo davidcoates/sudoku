@@ -7,9 +7,25 @@ from dataclasses import dataclass, field
 from typing import *
 from enum import Enum
 
+class LineType(Enum):
+    UNDIRECTED = 0
+    DIRECTED = 1
+
 @dataclass
 class Line:
     path: list[(int, int)]
+    ty: LineType = LineType.UNDIRECTED
+
+    def __eq__(self, other):
+        if not isinstance(other, Line):
+            return False
+        if self.ty != other.ty:
+            return False
+        if self.ty == LineType.DIRECTED:
+            return self.path == other.path
+        else:
+            return self.path == other.path or self.path == other.path[::-1]
+
 
 @dataclass
 class Edge:
@@ -50,12 +66,12 @@ class Digit:
 
 @dataclass
 class Constraints:
-    thermometers: list[Line] = field(default_factory=list)
-    palindromes: list[Line] = field(default_factory=list)
-    renbans: list[Line] = field(default_factory=list)
-    whispers: list[Line] = field(default_factory=list)
-    kropkis: list[Kropki] = field(default_factory=list)
-    xvs: list[XV] = field(default_factory=list)
+    thermometers: set[Line] = field(default_factory=set)
+    palindromes: set[Line] = field(default_factory=set)
+    renbans: set[Line] = field(default_factory=set)
+    whispers: set[Line] = field(default_factory=set)
+    kropkis: set[Kropki] = field(default_factory=set)
+    xvs: set[XV] = field(default_factory=set)
     antiknight: bool = False
     antiking: bool = False
     antixv: bool = False

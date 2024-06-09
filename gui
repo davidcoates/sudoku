@@ -134,7 +134,7 @@ class DigitAction(Action):
         self._sudoku.set(self._row, self._col, self._from_value)
 
 
-class ListAction(Action):
+class SetAction(Action):
 
     def __init__(self, sudoku, value):
         self._sudoku = sudoku
@@ -154,27 +154,27 @@ class ListAction(Action):
         self.apply()
 
 
-class ThermometerAction(ListAction):
+class ThermometerAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.thermometers
 
-class PalindromeAction(ListAction):
+class PalindromeAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.palindromes
 
-class RenbanAction(ListAction):
+class RenbanAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.renbans
 
-class WhisperAction(ListAction):
+class WhisperAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.whispers
 
-class KropkiAction(ListAction):
+class KropkiAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.kropkis
 
-class XVAction(ListAction):
+class XVAction(SetAction):
     def _values(self):
         return self._sudoku.constraints.xvs
 
@@ -596,13 +596,13 @@ class SudokuUI(tk.Frame):
                 if selection is None:
                     return
                 if self.edit_mode == EditMode.THERMOMETER:
-                    self._pending_line = Line.pending_thermometer(selection)
+                    self._pending_line = LineRender.pending_thermometer(selection)
                 elif self.edit_mode == EditMode.PALINDROME:
-                    self._pending_line = Line.pending_palindrome(selection)
+                    self._pending_line = LineRender.pending_palindrome(selection)
                 elif self.edit_mode == EditMode.RENBAN:
-                    self._pending_line = Line.pending_renban(selection)
+                    self._pending_line = LineRender.pending_renban(selection)
                 elif self.edit_mode == EditMode.GERMAN_WHISPER:
-                    self._pending_line = Line.pending_whisper(selection)
+                    self._pending_line = LineRender.pending_whisper(selection)
                 else:
                     assert(False)
 
@@ -613,13 +613,13 @@ class SudokuUI(tk.Frame):
             self._pending_line = None
             return
         if self.edit_mode == EditMode.THERMOMETER:
-            self._apply(ThermometerAction(self._sudoku, Thermometer(self._pending_line.path)))
+            self._apply(ThermometerAction(self._sudoku, Line(self._pending_line.path, LineType.DIRECTED)))
         elif self.edit_mode == EditMode.PALINDROME:
-            self._apply(PalindromeAction(self._sudoku, Palindrome(self._pending_line.path)))
+            self._apply(PalindromeAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
         elif self.edit_mode == EditMode.RENBAN:
-            self._apply(RenbanAction(self._sudoku, Renban(self._pending_line.path)))
+            self._apply(RenbanAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
         elif self.edit_mode == EditMode.GERMAN_WHISPER:
-            self._apply(WhisperAction(self._sudoku, Whisper(self._pending_line.path)))
+            self._apply(WhisperAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
         else:
             assert(False)
         self._pending_line = None
