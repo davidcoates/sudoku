@@ -11,20 +11,18 @@ class LineType(Enum):
     UNDIRECTED = 0
     DIRECTED = 1
 
-@dataclass
+@dataclass(init=False)
 class Line:
     path: list[(int, int)]
     ty: LineType = LineType.UNDIRECTED
 
-    def __eq__(self, other):
-        if not isinstance(other, Line):
-            return False
-        if self.ty != other.ty:
-            return False
-        if self.ty == LineType.DIRECTED:
-            return self.path == other.path
-        else:
-            return self.path == other.path or self.path == other.path[::-1]
+    def __init__(self, path, ty):
+        assert len(path) > 0
+        self.ty = ty
+        if self.ty == LineType.UNDIRECTED:
+            # pick a canonical orientation (for comparisons / hash)
+            path = min(path, path[::-1])
+        self.path = path
 
 
 @dataclass
