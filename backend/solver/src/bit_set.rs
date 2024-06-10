@@ -23,6 +23,14 @@ impl BitSet {
         }
     }
 
+    pub fn from_vec(vec: &Vec<usize>) -> Self {
+        let mut bits = BitSet::new();
+        for bit in vec {
+            bits.insert(*bit);
+        }
+        return bits;
+    }
+
     pub fn single(value: usize) -> Self {
         if value >= 128 {
             panic!("value({}) out of bounds", value)

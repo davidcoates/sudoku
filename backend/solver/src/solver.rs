@@ -11,7 +11,7 @@ pub struct Puzzle {
 // only solved constraints
 // order of constraints
 // only constraints with dirty variables
-fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &dyn Reporter) -> Result {
+fn simplify(domains: &mut Domains, constraints: &Constraints, reporter: &Reporter) -> Result {
     // TODO
     let mut new_constraints = Constraints::new();
     let mut any_progress = false;
@@ -45,7 +45,7 @@ impl Puzzle {
         }
     }
 
-    pub fn solve_no_branch(self: &mut Puzzle, reporter: &dyn Reporter, config: Config) -> Result {
+    pub fn solve_no_branch(self: &mut Puzzle, reporter: &Reporter, config: Config) -> Result {
         let result = simplify(&mut self.domains, &self.constraints, reporter);
         match result {
             Result::Progress(constraints) => { self.constraints = constraints; return self.solve_no_branch(reporter, config); },
@@ -53,7 +53,7 @@ impl Puzzle {
         }
     }
 
-    pub fn solve(self: &mut Puzzle, reporter: &dyn Reporter, config: Config) -> Result {
+    pub fn solve(self: &mut Puzzle, reporter: &Reporter, config: Config) -> Result {
         let result = self.solve_no_branch(reporter, config);
         if self.depth > config.max_depth {
             return result;

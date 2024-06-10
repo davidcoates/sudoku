@@ -53,7 +53,7 @@ impl Constraint for Ratio {
         return d1.checked_mul(self.ratio) == Some(d2) || d2.checked_mul(self.ratio) == Some(d1);
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
 
         let mut iter = self.variables.iter();
         let v1 = iter.next().unwrap();

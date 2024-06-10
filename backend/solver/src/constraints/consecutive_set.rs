@@ -31,7 +31,7 @@ impl Constraint for ConsecutiveSet {
         return union.len() == self.variables.len() && (union.max() - union.min() + 1) == union.len();
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
 
         match simplify_distinct(domains, self.variables) {
             Some((v1, d1)) => {

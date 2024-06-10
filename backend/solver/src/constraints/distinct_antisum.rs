@@ -33,7 +33,7 @@ impl Constraint for DistinctAntisum {
         return union.len() == self.variables.len() && !self.antisums.contains(union.iter().sum::<usize>());
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
 
         if self.variables.len() == 1 {
             let variable = self.variables.iter().next().unwrap();

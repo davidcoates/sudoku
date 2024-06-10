@@ -7,11 +7,28 @@ pub type Variable = usize;
 pub type VariableSet = BitSet;
 pub type ConstraintID = usize;
 
-pub trait Reporter {
-    fn variable_name(&self, variable: Variable) -> &String;
-    fn constraint_name(&self, id: ConstraintID) -> &String;
-    fn emit(&self, breadcrumb: String);
-    fn enabled(&self) -> bool;
+pub struct Reporter {
+    pub variable_id_to_name: Vec<String>,
+    pub constraint_id_to_name: Vec<String>,
+    pub enabled: bool,
+}
+
+impl Reporter {
+    pub fn variable_name(&self, id: Variable) -> &String {
+        &self.variable_id_to_name[id]
+    }
+
+    pub fn constraint_name(&self, id: ConstraintID) -> &String {
+        &self.constraint_id_to_name[id]
+    }
+
+    pub fn emit(&self, breadcrumb: String) {
+        eprint!("{}\n", breadcrumb);
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
 }
 
 #[derive(Clone,Copy)]

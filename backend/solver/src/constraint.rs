@@ -18,13 +18,13 @@ pub trait Constraint : std::fmt::Debug {
 
     // provided not all variables are solved, and no variable is unsolvable,
     // try to simplify by reducing the domain of variables and/or replace the constraint with new (smaller) constraint(s).
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result;
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result;
 
     // provided all variables are solved, is this constraint satisfied?
     fn check_solved(&self, domains: &mut Domains) -> bool;
 }
 
-pub fn apply<C, F>(constraint: &C, domains: &mut Domains, reporter: &dyn Reporter, variable: Variable, fun: F) -> bool
+pub fn apply<C, F>(constraint: &C, domains: &mut Domains, reporter: &Reporter, variable: Variable, fun: F) -> bool
 where
     C: Constraint,
     F: Fn(&mut Domain)
@@ -64,7 +64,7 @@ impl BoxedConstraint {
         return self.constraint.as_ref();
     }
 
-    fn check(&self, domains: &mut Domains, reporter: &dyn Reporter)-> Option<Result> {
+    fn check(&self, domains: &mut Domains, reporter: &Reporter)-> Option<Result> {
         let mut all_solved = true;
         for variable in self.unbox().variables().iter() {
             if domains[variable].len() == 0 {
@@ -89,7 +89,7 @@ impl BoxedConstraint {
         return None;
     }
 
-    pub fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    pub fn simplify(&self, domains: &mut Domains, reporter: &Reporter) -> Result {
         match self.check(domains, reporter) {
             Some(result) => result,
             None => self.constraint.clone().simplify(domains, reporter),
@@ -98,7 +98,7 @@ impl BoxedConstraint {
 
 }
 
-pub fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+pub fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &Reporter) -> Result {
     match constraint.simplify(domains, reporter) {
         Result::Stuck => {
             return Result::Progress(vec![constraint]);
@@ -107,7 +107,7 @@ pub fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, rep
     }
 }
 
-pub fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+pub fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporter: &Reporter) -> Result {
     let mut r1 = progress_simplify(c1, domains, reporter);
     let mut r2 = progress_simplify(c2, domains, reporter);
     match (&r1, &r2) {

@@ -57,7 +57,7 @@ impl Constraint for Permutation {
         return union == self.domain;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
 
         let mut progress = false;
 

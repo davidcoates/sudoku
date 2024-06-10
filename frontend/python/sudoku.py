@@ -1,8 +1,9 @@
 import json
-import subprocess
 import pickle
 import json
+from http import HTTPStatus
 import lzstring
+import requests
 from dataclasses import dataclass, field
 from typing import *
 from enum import Enum
@@ -193,10 +194,12 @@ class Sudoku(object):
         def permutation(coordinates, description):
             variables = [ f"{r+1}:{c+1}" for (r, c) in coordinates ]
             return {
-                "type": "Permutation",
+                "description": description,
                 "variables": variables,
-                "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9],
-                "description": description
+                "params" : {
+                    "type": "Permutation",
+                    "domain": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                }
             }
         for r in range(9):
             constraints.append(permutation(
@@ -218,9 +221,11 @@ class Sudoku(object):
         for line in self._constraints.thermometers:
             variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
             constraints.append({
-                "type": "Increasing",
+                "description": "thermometer",
                 "variables": variables,
-                "description": "thermometer"
+                "params": {
+                    "type": "Increasing"
+                }
             })
 
         for line in self._constraints.palindromes:
@@ -228,26 +233,32 @@ class Sudoku(object):
             for i in range(n):
                 variables = [ f"{r+1}:{c+1}" for (r, c) in [line.path[i], line.path[-(i+1)]] ]
                 constraints.append({
-                    "type": "Equals",
+                    "description": "palindrome",
                     "variables": variables,
-                    "description": "palindrome"
+                    "params": {
+                        "type": "Equals"
+                    }
                 })
 
         for line in self._constraints.renbans:
             variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
             constraints.append({
-                "type": "ConsecutiveSet",
+                "description": "renban",
                 "variables": variables,
-                "description": "renban"
+                "params": {
+                    "type": "ConsecutiveSet"
+                }
             })
 
         for line in self._constraints.whispers:
             variables = [ f"{r+1}:{c+1}" for (r, c) in line.path ]
             constraints.append({
-                "type": "Difference",
-                "variables": variables,
                 "description": "whisper",
-                "threshold": 5,
+                "variables": variables,
+                "params": {
+                    "type": "Difference",
+                    "threshold": 5
+                }
             })
 
         for kropki in self._constraints.kropkis:
@@ -255,16 +266,20 @@ class Sudoku(object):
             match kropki.color:
                 case Kropki.Color.WHITE:
                     constraints.append({
-                        "type": "ConsecutiveSet",
-                        "variables": variables,
                         "description": "white kropki",
+                        "variables": variables,
+                        "params": {
+                            "type": "ConsecutiveSet"
+                        }
                     })
                 case Kropki.Color.BLACK:
                     constraints.append({
-                        "type": "Ratio",
-                        "variables": variables,
                         "description": "black kropki",
-                        "ratio": 2,
+                        "variables": variables,
+                        "params": {
+                            "type": "Ratio",
+                            "ratio": 2
+                        }
                     })
                 case _:
                     assert(False)
@@ -281,10 +296,12 @@ class Sudoku(object):
         for xv in self._constraints.xvs:
             variables = [ f"{r+1}:{c+1}" for (r, c) in [xv.edge.cell0, xv.edge.cell1] ]
             constraints.append({
-                "type": "DistinctSum",
-                "variables": variables,
                 "description": xv.value.name,
-                "sum": xv.value.value
+                "variables": variables,
+                "params": {
+                    "type": "DistinctSum",
+                    "sum": xv.value.value
+                }
             })
             if self._constraints.antixv:
                 antixv_edges.remove(xv.edge)
@@ -293,10 +310,12 @@ class Sudoku(object):
             for edge in antixv_edges:
                 variables = [ f"{r+1}:{c+1}" for (r, c) in [edge.cell0, edge.cell1] ]
                 constraints.append({
-                    "type": "DistinctAntisum",
-                    "variables": variables,
                     "description": "antixv",
-                    "antisums": [ 5, 10 ]
+                    "variables": variables,
+                    "params": {
+                        "type": "DistinctAntisum",
+                        "antisums": [ 5, 10 ]
+                    }
                 })
 
 
@@ -311,9 +330,11 @@ class Sudoku(object):
             for move in moves:
                 variables = [ f"{r+1}:{c+1}" for (r, c) in move ]
                 constraints.append({
-                    "type": "NotEquals",
+                    "description": description,
                     "variables": variables,
-                    "description": description
+                    "params": {
+                        "type": "NotEquals"
+                    }
                 })
             moves.clear()
 
@@ -351,18 +372,11 @@ class Sudoku(object):
             "max_depth": max_depth if branch else 0,
         }
 
-        try:
-            pipe = subprocess.run(
-                ["../../backend/solver/target/release/solver"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                input=json.dumps(solver_input),
-                encoding="ascii",
-                timeout=30)
-        except subprocess.TimeoutExpired:
-            return ("Timed Out", None)
+        resp = requests.post("http://localhost:3000/solve", json=solver_input)
+        if resp.status_code != HTTPStatus.OK:
+            return ("Error", None, None)
 
-        solver_output = json.loads(pipe.stdout)
+        solver_output = resp.json()
         result = solver_output["result"]
         duration_ms = solver_output["duration_ms"]
         board = [ [ self._board[r][c] for c in range(9) ] for r in range(9) ]
@@ -370,5 +384,7 @@ class Sudoku(object):
             [r, c] = variable.split(':')
             r, c = int(r) - 1, int(c) - 1
             board[r][c] = Digit(domain)
-        return (f"{result.title()} ({duration_ms}ms)", board, pipe.stderr)
+
+        breadcrumbs = [] # FIXME!
+        return (f"{result.title()} ({duration_ms}ms)", board, breadcrumbs)
 

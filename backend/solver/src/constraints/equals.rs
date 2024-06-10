@@ -37,7 +37,7 @@ impl Constraint for Equals {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &dyn Reporter) -> Result {
+    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
 
         // Compute the intersection of all domains
         let intersection = self.variables.iter().map(|v| domains[v]).intersection();
