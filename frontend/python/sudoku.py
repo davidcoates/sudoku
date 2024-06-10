@@ -353,7 +353,7 @@ class Sudoku(object):
 
         try:
             pipe = subprocess.run(
-                ["./solver/target/release/solver"],
+                ["../../backend/solver/target/release/solver"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 input=json.dumps(solver_input),
