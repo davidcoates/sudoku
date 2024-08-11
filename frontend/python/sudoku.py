@@ -169,7 +169,7 @@ class Sudoku(object):
                             self._board[r][c] = Digit([digit]) if digit is not None else Digit.blank()
 
         except FileNotFoundError:
-            self._board = [ [ Digit() for c in range(9) ] for r in range(9) ]
+            self._board = [ [ Digit(list(range(1, 10))) for c in range(9) ] for r in range(9) ]
             self._constraints = Constraints()
 
     def set(self, r, c, value):
