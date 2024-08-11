@@ -148,7 +148,7 @@ class SetAction(Action):
         if self._value in values:
             values.remove(self._value)
         else:
-            values.append(self._value)
+            values.add(self._value)
 
     def undo(self):
         self.apply()
@@ -613,13 +613,13 @@ class SudokuUI(tk.Frame):
             self._pending_line = None
             return
         if self.edit_mode == EditMode.THERMOMETER:
-            self._apply(ThermometerAction(self._sudoku, Line(self._pending_line.path, LineType.DIRECTED)))
+            self._apply(ThermometerAction(self._sudoku, Line(self._pending_line.path, Line.Type.DIRECTED)))
         elif self.edit_mode == EditMode.PALINDROME:
-            self._apply(PalindromeAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
+            self._apply(PalindromeAction(self._sudoku, Line(self._pending_line.path, Line.Type.UNDIRECTED)))
         elif self.edit_mode == EditMode.RENBAN:
-            self._apply(RenbanAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
+            self._apply(RenbanAction(self._sudoku, Line(self._pending_line.path, Line.Type.UNDIRECTED)))
         elif self.edit_mode == EditMode.GERMAN_WHISPER:
-            self._apply(WhisperAction(self._sudoku, Line(self._pending_line.path, LineType.UNDIRECTED)))
+            self._apply(WhisperAction(self._sudoku, Line(self._pending_line.path, Line.Type.UNDIRECTED)))
         else:
             assert(False)
         self._pending_line = None

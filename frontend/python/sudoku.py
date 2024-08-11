@@ -8,35 +8,40 @@ from dataclasses import dataclass, field
 from typing import *
 from enum import Enum
 
-class LineType(Enum):
-    UNDIRECTED = 0
-    DIRECTED = 1
 
-@dataclass(init=False)
+@dataclass(init=False,frozen=True)
 class Line:
+    class Type(Enum):
+        UNDIRECTED = 0
+        DIRECTED = 1
     path: list[(int, int)]
-    ty: LineType = LineType.UNDIRECTED
+    ty: Type = Type.UNDIRECTED
 
     def __init__(self, path, ty):
         assert len(path) > 0
-        self.ty = ty
-        if self.ty == LineType.UNDIRECTED:
+        if ty == Line.Type.UNDIRECTED:
             # pick a canonical orientation (for comparisons / hash)
             path = min(path, path[::-1])
-        self.path = path
+        super().__setattr__('ty', ty)
+        super().__setattr__('path', path)
+
+    def __hash__(self):
+        return hash((tuple(self.path), self.ty))
 
 
-@dataclass
+@dataclass(frozen=True)
 class Edge:
     # cell0 should compare less than cell1
     cell0: (int, int)
     cell1: (int, int)
 
     def __init__(self, cell0, cell1):
-        (self.cell0, self.cell1) = (cell0, cell1) if cell0 < cell1 else (cell1, cell0)
+        (cell0, cell1) = (cell0, cell1) if cell0 < cell1 else (cell1, cell0)
+        super().__setattr__('cell0', cell0)
+        super().__setattr__('cell1', cell1)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Kropki:
     class Color(Enum):
         WHITE = 0
@@ -45,7 +50,7 @@ class Kropki:
     edge: Edge
 
 
-@dataclass
+@dataclass(frozen=True)
 class XV:
     class Value(Enum):
         X = 10
@@ -54,9 +59,9 @@ class XV:
     edge: Edge
 
 
-@dataclass
+@dataclass(frozen=True)
 class Digit:
-    values: [int]
+    values: list[int]
 
     @classmethod
     def blank(cls):
