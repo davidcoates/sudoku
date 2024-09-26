@@ -1,6 +1,5 @@
 use crate::constraint::*;
 use crate::types::*;
-use std::rc::Rc;
 
 #[derive(Clone,Debug)]
 pub struct NotEquals {
@@ -24,6 +23,8 @@ impl NotEquals {
 
 impl Constraint for NotEquals {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut seen = Domain::new();
         for variable in self.variables.iter() {
@@ -36,7 +37,7 @@ impl Constraint for NotEquals {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         let mut iter = self.variables.iter();
         let v1 = iter.next().unwrap();
@@ -47,9 +48,9 @@ impl Constraint for NotEquals {
 
         if d1.len() == 1 && d2.len() == 1 {
             if d1.value_unchecked() == d2.value_unchecked() {
-                return Result::Unsolvable;
+                return SimplifyResult::Unsolvable;
             } else {
-                return Result::Solved;
+                return SimplifyResult::Solved;
             }
         }
 
@@ -78,9 +79,9 @@ impl Constraint for NotEquals {
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

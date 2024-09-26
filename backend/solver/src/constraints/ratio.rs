@@ -1,6 +1,5 @@
 use crate::constraint::*;
 use crate::types::*;
-use std::rc::Rc;
 
 #[derive(Clone,Debug)]
 pub struct Ratio {
@@ -41,6 +40,8 @@ fn ratio_image(domain: Domain, ratio: usize) -> Domain {
 
 impl Constraint for Ratio {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
 
         let mut iter = self.variables.iter();
@@ -53,7 +54,7 @@ impl Constraint for Ratio {
         return d1.checked_mul(self.ratio) == Some(d2) || d2.checked_mul(self.ratio) == Some(d1);
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         let mut iter = self.variables.iter();
         let v1 = iter.next().unwrap();
@@ -67,21 +68,21 @@ impl Constraint for Ratio {
         {
             progress |= apply(&*self, domains, reporter, v2, |d| d.intersect_with(ratio_image(d1, self.ratio)));
             if domains[v2].empty() {
-                return Result::Stuck;
+                return SimplifyResult::Stuck;
             }
         }
 
         {
             progress |= apply(&*self, domains, reporter, v1, |d| d.intersect_with(ratio_image(d2, self.ratio)));
             if domains[v1].empty() {
-                return Result::Stuck;
+                return SimplifyResult::Stuck;
             }
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

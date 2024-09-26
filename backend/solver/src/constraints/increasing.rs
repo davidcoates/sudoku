@@ -1,6 +1,5 @@
 use crate::constraint::*;
 use crate::types::*;
-use std::rc::Rc;
 
 // Strictly increasing digits
 #[derive(Clone,Debug)]
@@ -31,6 +30,8 @@ impl Increasing {
 
 impl Constraint for Increasing {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut last : Option<usize> = None;
         for variable in self.variables.iter() {
@@ -43,7 +44,7 @@ impl Constraint for Increasing {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         let mut progress = false;
 
@@ -60,7 +61,7 @@ impl Constraint for Increasing {
 
             let domain = domains[*variable];
             if domain.empty() {
-                return Result::Unsolvable;
+                return SimplifyResult::Unsolvable;
             }
             min = Some(domain.min());
         }
@@ -77,15 +78,15 @@ impl Constraint for Increasing {
 
             let domain = domains[*variable];
             if domain.empty() {
-                return Result::Unsolvable;
+                return SimplifyResult::Unsolvable;
             }
             max = Some(domain.max());
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

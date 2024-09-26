@@ -1,7 +1,6 @@
 use crate::constraint::*;
 use crate::types::*;
 use crate::bit_set::*;
-use std::rc::Rc;
 
 // Strictly increasing digits
 #[derive(Clone,Debug)]
@@ -38,6 +37,8 @@ fn difference(domain: Domain, threshold: usize) -> Domain {
 
 impl Constraint for Difference {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut last : Option<usize> = None;
         for variable in self.variables.iter() {
@@ -50,7 +51,7 @@ impl Constraint for Difference {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         let mut progress = false;
 
@@ -66,14 +67,14 @@ impl Constraint for Difference {
                     {
                         progress |= apply(&*self, domains, reporter, v2, |d| d.intersect_with(difference(d1, self.threshold)));
                         if domains[v2].empty() {
-                            return Result::Stuck;
+                            return SimplifyResult::Stuck;
                         }
                     }
 
                     {
                         progress |= apply(&*self, domains, reporter, v1, |d| d.intersect_with(difference(d2, self.threshold)));
                         if domains[v1].empty() {
-                            return Result::Stuck;
+                            return SimplifyResult::Stuck;
                         }
                     }
                 },
@@ -83,9 +84,9 @@ impl Constraint for Difference {
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

@@ -1,7 +1,6 @@
 use crate::constraint::*;
 use crate::types::*;
 use crate::bit_set::*;
-use std::rc::Rc;
 
 #[derive(Clone,Debug)]
 pub struct Equals {
@@ -25,6 +24,8 @@ impl Equals {
 
 impl Constraint for Equals {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let mut last : Option<usize> = None;
         for variable in self.variables.iter() {
@@ -37,7 +38,7 @@ impl Constraint for Equals {
         return true;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         // Compute the intersection of all domains
         let intersection = self.variables.iter().map(|v| domains[v]).intersection();
@@ -48,9 +49,9 @@ impl Constraint for Equals {
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

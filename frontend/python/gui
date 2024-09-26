@@ -148,7 +148,7 @@ class SetAction(Action):
         if self._value in values:
             values.remove(self._value)
         else:
-            values.add(self._value)
+            values.append(self._value)
 
     def undo(self):
         self.apply()
@@ -245,9 +245,8 @@ class SudokuUI(tk.Frame):
         label.pack(side=tk.TOP, fill=tk.BOTH)
 
     def _reload_global_constraints(self):
-        self._antiknight_check.select() if self._sudoku.constraints.antiknight else self._antiknight_check.deselect()
-        self._antiking_check.select() if self._sudoku.constraints.antiking else self._antiking_check.deselect()
-        self._antixv_check.select() if self._sudoku.constraints.antixv else self._antixv_check.deselect()
+        self._anti_knight_check.select() if self._sudoku.constraints.anti_knight else self._anti_knight_check.deselect()
+        self._anti_king_check.select() if self._sudoku.constraints.anti_king else self._anti_king_check.deselect()
 
     def _init_global_panel(self, parent, side):
 
@@ -256,26 +255,19 @@ class SudokuUI(tk.Frame):
 
         self._make_header(panel, "Global")
 
-        self._antiknight = tk.BooleanVar()
-        def toggle_antiknight():
-            self._sudoku.constraints.antiknight = self._antiknight.get()
-        self._antiknight_check = self._init_check(panel, "Antiknight", self._antiknight)
-        self._antiknight_check.config(command=toggle_antiknight)
-        self._antiknight_check.pack()
+        self._anti_knight = tk.BooleanVar()
+        def toggle_anti_knight():
+            self._sudoku.constraints.anti_knight = self._anti_knight.get()
+        self._anti_knight_check = self._init_check(panel, "Anti-Knight", self._anti_knight)
+        self._anti_knight_check.config(command=toggle_anti_knight)
+        self._anti_knight_check.pack()
 
-        self._antiking = tk.BooleanVar()
-        def toggle_antiking():
-            self._sudoku.constraints.antiking = self._antiking.get()
-        self._antiking_check = self._init_check(panel, "Antiking", self._antiking)
-        self._antiking_check.config(command=toggle_antiking)
-        self._antiking_check.pack()
-
-        self._antixv = tk.BooleanVar()
-        def toggle_antixv():
-            self._sudoku.constraints.antixv = self._antixv.get()
-        self._antixv_check = self._init_check(panel, "AntiXV", self._antixv)
-        self._antixv_check.config(command=toggle_antixv)
-        self._antixv_check.pack()
+        self._anti_king = tk.BooleanVar()
+        def toggle_anti_king():
+            self._sudoku.constraints.anti_king = self._anti_king.get()
+        self._anti_king_check = self._init_check(panel, "Anti-King", self._anti_king)
+        self._anti_king_check.config(command=toggle_anti_king)
+        self._anti_king_check.pack()
 
         self._reload_global_constraints()
 
@@ -344,30 +336,9 @@ class SudokuUI(tk.Frame):
         greedy_check = self._init_check(panel, "Greedy", self._greedy)
         greedy_check.config(state=tk.DISABLED)
 
-        self._max_depth = tk.IntVar()
-        self._max_depth.set(1)
-
-        max_depth_label = tk.Label(panel,
-                                   text="Depth:",
-                                   background=INLAY_COLOR,
-                                   fg="black",
-                                   font=LABEL_FONT,
-                                   state=tk.DISABLED)
-        max_depth_label.pack(side=tk.LEFT, padx=5, pady=5)
-
-        max_depth_input = tk.OptionMenu(panel, self._max_depth, 1, 2, 3)
-        max_depth_input.config(background=INLAY_COLOR,
-                               highlightthickness=0,
-                               fg="black",
-                               font=LABEL_FONT,
-                               state=tk.DISABLED)
-        max_depth_input.pack(side=tk.RIGHT, padx=5, pady=5)
-
         def toggle_state():
             state = tk.NORMAL if self._branch.get() else tk.DISABLED
             greedy_check.config(state=state)
-            max_depth_label.config(state=state)
-            max_depth_input.config(state=state)
 
         branch_check.config(command=toggle_state)
 
@@ -737,7 +708,6 @@ class SudokuUI(tk.Frame):
         (solve_state, board, breadcrumbs) = self._sudoku.solve(
             branch=self._branch.get(),
             greedy=self._greedy.get(),
-            max_depth=self._max_depth.get(),
             trace=self._trace.get())
 
         if breadcrumbs:

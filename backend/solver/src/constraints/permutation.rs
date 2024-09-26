@@ -1,7 +1,6 @@
 use crate::bit_set::*;
 use crate::constraint::*;
 use crate::types::*;
-use std::rc::Rc;
 
 // Distinct digits covering a domain
 #[derive(Clone,Debug)]
@@ -52,12 +51,14 @@ pub fn simplify_distinct(domains: &mut Domains, variables: VariableSet) -> Optio
 
 impl Constraint for Permutation {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let union: Domain = self.variables.iter().map(|v| domains[v]).union();
         return union == self.domain;
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         let mut progress = false;
 
@@ -69,18 +70,18 @@ impl Constraint for Permutation {
         //match simplify_distinct(domains, self.variables).or_else(|| simplify_permutation(domains, self.variables)) {
         match simplify_distinct(domains, self.variables) {
             Some((v1, d1)) => {
-                let c1 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, v1, d1)));
+                let c1 = Box::new(Permutation::new(self.id, v1, d1));
                 let (v2, d2) = (self.variables.difference(v1), self.domain.difference(d1));
-                let c2 = BoxedConstraint::new(Rc::new(Permutation::new(self.id, v2, d2)));
-                return join(c1, c2, domains, reporter);
+                let c2 = Box::new(Permutation::new(self.id, v2, d2));
+                return SimplifyResult::Rewrite(vec![c1, c2]);
             }
             None => {}
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 

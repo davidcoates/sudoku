@@ -1,30 +1,72 @@
-use std::rc::Rc;
-
 use crate::types::*;
 
+use std::boxed::Box;
+
+
+pub type Constraints = Vec<Box<dyn Constraint>>;
+
 #[derive(Debug)]
-pub enum Result {
+pub enum SimplifyResult {
     Unsolvable,
     Solved,
     Stuck,
-    Progress(Vec<BoxedConstraint>)
+    Progress,
+    Rewrite(Constraints),
 }
 
 pub trait Constraint : std::fmt::Debug {
 
-    fn variables(&self) -> &VariableSet;
+    fn clone_box(&self) -> Box<dyn Constraint>;
 
     fn id(&self) -> ConstraintID;
 
+    fn variables(&self) -> &VariableSet;
+
     // provided not all variables are solved, and no variable is unsolvable,
     // try to simplify by reducing the domain of variables and/or replace the constraint with new (smaller) constraint(s).
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result;
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult;
 
     // provided all variables are solved, is this constraint satisfied?
     fn check_solved(&self, domains: &mut Domains) -> bool;
+
+    fn check(&self, domains: &mut Domains, reporter: &dyn Reporter)-> Option<SimplifyResult> {
+        let mut all_solved = true;
+        for variable in self.variables().iter() {
+            if domains[variable].len() == 0 {
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is empty", reporter.variable_name(variable)));
+                }
+                return Some(SimplifyResult::Unsolvable);
+            } else if domains[variable].len() != 1 {
+                all_solved = false;
+            }
+        }
+        if all_solved {
+            if self.check_solved(domains) {
+                return Some(SimplifyResult::Solved);
+            } else {
+                if reporter.enabled() {
+                    reporter.emit(format!("{} is unsolved", reporter.constraint_name(self.id())));
+                }
+                return Some(SimplifyResult::Unsolvable);
+            }
+        }
+        return None;
+    }
+
+    fn check_and_simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
+        match self.check(domains, reporter) {
+            Some(result) => result,
+            None => self.simplify(domains, reporter),
+        }
+    }
 }
 
-pub fn apply<C, F>(constraint: &C, domains: &mut Domains, reporter: &Reporter, variable: Variable, fun: F) -> bool
+impl Clone for Box<dyn Constraint> {
+    fn clone(&self) -> Self { self.clone_box() }
+}
+
+pub fn apply<C, F>(constraint: &C, domains: &mut Domains, reporter: &dyn Reporter, variable: Variable, fun: F) -> bool
 where
     C: Constraint,
     F: Fn(&mut Domain)
@@ -41,91 +83,4 @@ where
         return true;
     }
 
-}
-
-pub type Constraints = Vec<BoxedConstraint>;
-
-#[derive(Clone,Debug)]
-pub struct BoxedConstraint {
-    constraint: Rc<dyn Constraint>,
-}
-
-// TODO add caching of domains to detect if any relevant domain has changed.
-
-impl BoxedConstraint {
-
-    pub fn new(constraint: Rc<dyn Constraint>) -> Self {
-        return BoxedConstraint {
-            constraint,
-        }
-    }
-
-    pub fn unbox(&self) -> &dyn Constraint {
-        return self.constraint.as_ref();
-    }
-
-    fn check(&self, domains: &mut Domains, reporter: &Reporter)-> Option<Result> {
-        let mut all_solved = true;
-        for variable in self.unbox().variables().iter() {
-            if domains[variable].len() == 0 {
-                if reporter.enabled() {
-                    reporter.emit(format!("{} is empty", reporter.variable_name(variable)));
-                }
-                return Some(Result::Unsolvable);
-            } else if domains[variable].len() != 1 {
-                all_solved = false;
-            }
-        }
-        if all_solved {
-            if self.unbox().check_solved(domains) {
-                return Some(Result::Solved);
-            } else {
-                if reporter.enabled() {
-                    reporter.emit(format!("{} is unsolved", reporter.constraint_name(self.unbox().id())));
-                }
-                return Some(Result::Unsolvable);
-            }
-        }
-        return None;
-    }
-
-    pub fn simplify(&self, domains: &mut Domains, reporter: &Reporter) -> Result {
-        match self.check(domains, reporter) {
-            Some(result) => result,
-            None => self.constraint.clone().simplify(domains, reporter),
-        }
-    }
-
-}
-
-pub fn progress_simplify(constraint: BoxedConstraint, domains: &mut Domains, reporter: &Reporter) -> Result {
-    match constraint.simplify(domains, reporter) {
-        Result::Stuck => {
-            return Result::Progress(vec![constraint]);
-        },
-        r => r
-    }
-}
-
-pub fn join(c1: BoxedConstraint, c2: BoxedConstraint, domains: &mut Domains, reporter: &Reporter) -> Result {
-    let mut r1 = progress_simplify(c1, domains, reporter);
-    let mut r2 = progress_simplify(c2, domains, reporter);
-    match (&r1, &r2) {
-        (Result::Unsolvable, _)       => Result::Unsolvable,
-        (_, Result::Unsolvable)       => Result::Unsolvable,
-        (Result::Solved, Result::Solved) => Result::Solved,
-        (Result::Stuck, Result::Stuck)   => Result::Stuck,
-        _                              => {
-            let mut tmp = Vec::new();
-            match &mut r1 {
-                Result::Progress(constraints) => { tmp.append(constraints); },
-                _ => {}
-            }
-            match &mut r2 {
-                Result::Progress(constraints) => { tmp.append(constraints); },
-                _ => {}
-            }
-            return Result::Progress(tmp);
-        }
-    }
 }

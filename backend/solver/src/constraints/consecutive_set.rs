@@ -2,7 +2,6 @@ use crate::constraint::*;
 use crate::types::*;
 use crate::constraints::permutation::*;
 use crate::bit_set::*;
-use std::rc::Rc;
 
 #[derive(Clone,Debug)]
 pub struct ConsecutiveSet {
@@ -26,12 +25,14 @@ impl ConsecutiveSet {
 
 impl Constraint for ConsecutiveSet {
 
+    fn clone_box(&self) -> Box<dyn Constraint> { Box::new(self.clone()) }
+
     fn check_solved(&self, domains: &mut Domains) -> bool {
         let union : Domain = self.variables.iter().map(|v| domains[v]).union();
         return union.len() == self.variables.len() && (union.max() - union.min() + 1) == union.len();
     }
 
-    fn simplify(self: Rc<Self>, domains: &mut Domains, reporter: &Reporter) -> Result {
+    fn simplify(&self, domains: &mut Domains, reporter: &dyn Reporter) -> SimplifyResult {
 
         match simplify_distinct(domains, self.variables) {
             Some((v1, d1)) => {
@@ -48,7 +49,7 @@ impl Constraint for ConsecutiveSet {
                 }
 
                 if progress {
-                    return Result::Progress(vec![BoxedConstraint::new(self)]);
+                    return SimplifyResult::Progress;
                 }
             }
             None => {}
@@ -58,7 +59,7 @@ impl Constraint for ConsecutiveSet {
         let max = self.variables.iter().filter_map(|v| domains[v].value()).max();
 
         if min.is_none() || max.is_none() {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
 
         // The set must contain min..=max
@@ -69,7 +70,7 @@ impl Constraint for ConsecutiveSet {
             if reporter.enabled() {
                 reporter.emit(format!("impossible {}", reporter.constraint_name(self.id)));
             }
-            return Result::Unsolvable;
+            return SimplifyResult::Unsolvable;
         }
 
         let excess = self.variables.len() - included_run;
@@ -83,9 +84,9 @@ impl Constraint for ConsecutiveSet {
         }
 
         if progress {
-            return Result::Progress(vec![BoxedConstraint::new(self)]);
+            return SimplifyResult::Progress;
         } else {
-            return Result::Stuck;
+            return SimplifyResult::Stuck;
         }
     }
 
